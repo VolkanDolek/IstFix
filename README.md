@@ -11,7 +11,6 @@
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-purple?style=flat-square)](https://docs.ultralytics.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL+PostGIS-16-336791?style=flat-square&logo=postgresql)](https://postgresql.org)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 </div>
 
