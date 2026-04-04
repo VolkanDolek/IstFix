@@ -25,7 +25,7 @@
 
 **IstFix** is a cross-platform mobile application that fully automates the urban infrastructure complaint submission process for Istanbul citizens. The system targets all 40 municipal authorities in Istanbul, covering 39 district municipalities and the Istanbul Metropolitan Municipality (IBB).
 
-A citizen captures a photo of an infrastructure issue. IstFix classifies the problem using an embedded YOLOv8 model, identifies the responsible municipality from the device's GPS coordinates, generates a formal complaint text dynamically via the Gemini API, and dispatches it directly to the correct authority through SendGrid — all without any manual input from the user.
+A citizen captures a photo of an infrastructure issue. IstFix classifies the problem using an embedded YOLOv8 model, identifies the responsible municipality from the device's GPS coordinates, generates a formal complaint text dynamically via the Gemini API, and dispatches it directly to the correct authority through SendGrid (all without any manual input from the user).
 
 This project was developed as a Graduation Design Project for COMP/SOFT 4902/4912 at Isik University.
 
@@ -95,7 +95,7 @@ The following non-functional requirements are defined in the SDD and verified th
 IstFix routes complaints to all **40 local authorities** in Istanbul:
 
 - **1** Istanbul Metropolitan Municipality (IBB)
-- **39** District municipalities (Adalar through Zeytinburnu)
+- **39** District municipalities
 
 All municipality email addresses are stored in the database and can be updated at any time through the administrator interface without requiring a redeployment (UC-8, SDD DG-M2).
 
