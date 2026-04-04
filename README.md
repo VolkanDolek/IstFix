@@ -6,16 +6,16 @@
 
 *Snap a photo. Classify the issue. Notify the municipality. Automatically.*
 
-![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![YOLOv8](https://img.shields.io/badge/YOLOv8-6A0DAD?style=for-the-badge&logo=ultralytics&logoColor=white)
-![Roboflow](https://img.shields.io/badge/Roboflow-6706CE?style=for-the-badge&logo=roboflow&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini_API-8B89CC?style=for-the-badge&logo=googlegemini&logoColor=white)
-![SendGrid](https://img.shields.io/badge/SendGrid-1A82E2?style=for-the-badge&logo=maildotru&logoColor=white)
-![Nominatim](https://img.shields.io/badge/Nominatim-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgis.net)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-6A0DAD?style=for-the-badge&logo=ultralytics&logoColor=white)](https://docs.ultralytics.com)
+[![Roboflow](https://img.shields.io/badge/Roboflow-6706CE?style=for-the-badge&logo=roboflow&logoColor=white)](https://roboflow.com)
+[![Gemini](https://img.shields.io/badge/Gemini_API-8B89CC?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev)
+[![SendGrid](https://img.shields.io/badge/SendGrid-1A82E2?style=for-the-badge&logo=maildotru&logoColor=white)](https://sendgrid.com)
+[![Nominatim](https://img.shields.io/badge/Nominatim-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)](https://nominatim.org)
 
 </div>
 
