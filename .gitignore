@@ -1,0 +1,174 @@
+# =============================================================================
+# IstFix — .gitignore
+# Flutter (Mobile) + Python/FastAPI (Backend) + PostgreSQL + YOLOv8
+# =============================================================================
+
+
+# =============================================================================
+# SECURITY — NEVER COMMIT
+# =============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+
+# =============================================================================
+# PYTHON / FASTAPI BACKEND
+# =============================================================================
+
+# Sanal ortam
+venv/
+.venv/
+env/
+ENV/
+
+# Python önbellek
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Paketleme / dağıtım
+*.egg
+*.egg-info/
+dist/
+build/
+
+# pytest & coverage
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# mypy / ruff
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pyenv
+.python-version
+
+# Alembic geçici
+backend/alembic/versions/__pycache__/
+
+
+# =============================================================================
+# ML — YOLOv8
+# =============================================================================
+
+# Model ağırlık dosyaları — büyük boyut, Git LFS kullanın
+*.pt
+*.onnx
+*.engine
+
+# Eğitim çıktıları
+runs/
+wandb/
+*.log
+
+# Roboflow indirme
+roboflow/
+datasets/images/
+datasets/labels/
+
+# Ultralytics önbellek
+.ultralytics/
+
+
+# =============================================================================
+# FLUTTER / DART
+# =============================================================================
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+mobile/build/
+.pub-cache/
+.pub/
+
+# Android
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/android/app/google-services.json
+mobile/android/app/*.jks
+mobile/android/app/*.keystore
+
+# iOS
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/GoogleService-Info.plist
+
+# Flutter generated
+mobile/**/*.g.dart
+mobile/**/*.freezed.dart
+mobile/**/*.gr.dart
+
+
+# =============================================================================
+# DATABASE
+# =============================================================================
+database/data/
+pgdata/
+*.dump
+*.sql.gz
+
+
+# =============================================================================
+# IDE / EDITOR
+# =============================================================================
+
+# VS Code (paylaşılabilir ayarlar hariç)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# JetBrains / Android Studio
+.idea/
+*.iml
+*.iws
+out/
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+
+
+# =============================================================================
+# OPERATING SYSTEM
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# =============================================================================
+# GENERAL
+# =============================================================================
+*.log
+logs/
+*.tmp
+*.temp
+tmp/
+node_modules/
