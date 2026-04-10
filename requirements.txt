@@ -1,0 +1,44 @@
+# =============================================================================
+# IstFix Backend — Python Dependencies
+# Installation: pip install -r requirements.txt
+# =============================================================================
+
+# --- Web Framework ---
+fastapi
+uvicorn[standard]
+
+# --- Database ---
+sqlalchemy
+psycopg2-binary
+geoalchemy2
+alembic                         # Database migration management
+
+# --- Authentication & Security ---
+python-jose[cryptography]       # JWT creation and validation
+passlib[bcrypt]                 # Password hashing with bcrypt
+python-dotenv                   # Reading .env files
+
+# --- ML Classification ---
+ultralytics                     # YOLOv8
+Pillow                          # Image processing
+
+# --- Geocoding ---
+geopy                           # Nominatim reverse geocoding
+
+# --- AI Text Generation ---
+google-generativeai             # Gemini API
+
+# --- Email Dispatch ---
+sendgrid                        # SendGrid SMTP relay
+
+# --- File Handling ---
+python-multipart                # Multipart form / file upload
+
+# --- HTTP Client (async) ---
+httpx                           # Async HTTP requests
+
+# --- Testing ---
+pytest
+pytest-asyncio
+pytest-cov
+httpx                           # For FastAPI test client
