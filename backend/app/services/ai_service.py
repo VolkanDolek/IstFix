@@ -8,7 +8,7 @@ from app.core.config import settings
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
 # 2. YOLOv8 Modelini Yükle 
-# (İleride eğittiğiniz 'best.pt' dosyasını ml_models klasörüne koyduğumuzda burası aktif olacak)
+# (İleride 'best.pt' dosyasını ml_models klasörüne koyduğumuzda burası aktif olacak)
 MODEL_PATH = "ml_models/best.pt"
 # yolo_model = YOLO(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
 
@@ -32,13 +32,10 @@ def generate_complaint_text(category: str) -> str:
     prompt = f"""
     Sen İstanbul'da yaşayan duyarlı bir vatandaşsın. 
     Karşılaştığın bir altyapı sorunu için belediyeye resmi bir şikayet metni yazıyorsun.
-    Tespit edilen sorun kategorisi: '{category}'.
     
-    Lütfen bu sorunla ilgili, yetkililerin hemen harekete geçmesini talep eden, 
-    kısa, net ve son derece resmi (saygılı) bir Türkçe dilekçe/şikayet metni oluştur. 
-    (Tarih, adres ve isim kısımlarını boş bırak, sadece ana metni yaz).
+    Tespit edilen '{category}' sorunu ile ilgili belediyeye iletilmek üzere en fazla 1-2 cümlelik, çok kısa ve resmi bir Türkçe şikayet metni oluştur. 
+    Lütfen sadece sorunu bildiren ve müdahale talep eden bu cümleleri yaz; selamlama, başlık, tarih, isim veya ekstra hiçbir kelime kesinlikle ekleme.
     """
-    
     try:
         model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(prompt)
