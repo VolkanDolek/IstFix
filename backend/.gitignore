@@ -1,0 +1,17 @@
+# backend/.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Database & IDE
+.vscode/
+.idea/
+*.db
+
+# Project Specific
+uploads/
+ml_models/best.pt
