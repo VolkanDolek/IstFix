@@ -17,6 +17,10 @@ router = APIRouter()
 # Fotoğrafların kaydedileceği klasör yolu
 UPLOAD_DIR = "uploads"
 
+# Klasör yoksa oluştur
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 @router.post("/upload", response_model=ReportResponse)
 async def create_report(
     latitude: float = Form(...),
