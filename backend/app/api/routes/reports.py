@@ -93,6 +93,7 @@ async def create_report(
     <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">İstFix | Altyapı Sorun Bildirimi</h2>
     <p>Sayın Yetkili,</p>
     <p>İstanbul genelinde yürütülen akıllı şehir ve altyapı iyileştirme çalışmaları kapsamında, vatandaşlar tarafından sistemimize bir saha raporu iletilmiştir.</p>
+
     <div style="background-color: #f9f9f9; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0;">
         <strong>Tespit Edilen Kategori:</strong> {category.upper()}<br>
         <strong>Konum:</strong> {municipality_name}<br>
@@ -113,11 +114,30 @@ async def create_report(
 
     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
     
-    <footer style="font-size: 11px; color: #bdc3c7; text-align: center;">
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <p>İstFix - Akıllı Şehir Raporlama Sistemi | 2026</p>
-        <p>Bu rapor, {reporter_email} adresli kullanıcı tarafından mobil uygulama üzerinden oluşturulmuştur.</p>
-    </footer>
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            <div style="max-width: 600px; margin: 0 auto;">
+                <p style="font-size: 13px; color: #2c3e50; font-weight: bold; margin-bottom: 5px;">
+                    İstFix Akıllı Şehir Raporlama Sistemi
+                </p>
+                
+                <p style="font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 15px;">
+                    Bu e-posta, İstanbul altyapı iyileştirme çalışmaları kapsamında oluşturulan bir 
+                    <strong>otomatik saha raporudur</strong>. Kamu yararı ve şehir güvenliği amacıyla 
+                    ilgili birimlere iletilmek üzere tasarlanmıştır.
+                </p>
+
+                <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                    Veri güvenliği ve raporlama standartları hakkında bilgi almak veya teknik bir aksaklığı bildirmek için 
+                    <a href="mailto:istfix.app@gmail.com" style="color: #3498db; text-decoration: none; border-bottom: 1px solid #3498db;">
+                        İstFix Teknik Masası
+                    </a> ile iletişime geçebilirsiniz.
+                </p>
+
+                <div style="font-size: 10px; color: #bbb; border-top: 1px dotted #eee; padding-top: 10px;">
+                    <span>© 2026 İstFix Teknoloji | Akıllı Şehir Çözümleri Grubu</span><br>
+                </div>
+            </div>
+        </footer>
 </div>
     """
     

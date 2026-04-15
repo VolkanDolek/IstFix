@@ -1,12 +1,10 @@
 # backend/app/services/mail_service.py
 import os
 import base64
-import ssl
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, ReplyTo, Attachment, FileContent, FileName, FileType, Disposition
 from app.core.config import settings
 
-ssl._create_default_https_context = ssl._create_unverified_context
 
 def send_complaint_email(target_email: str, subject: str, content: str, image_path: str = None) -> bool:
     """
