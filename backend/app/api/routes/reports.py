@@ -79,7 +79,7 @@ async def create_report(
     # 6. Mail Servisini Tetikle (SendGrid)
     email_subject = f"İstFix Resmi Bildirimi: {category.upper()} - {municipality_name}"
     
-    # Mail içeriğini şık bir HTML formatına çeviriyoruz
+    # Mail içeriğini  HTML formatına çevir
     html_content = f"""
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <h2 style="color: #2c3e50;">Yeni Altyapı Sorunu Bildirimi</h2>

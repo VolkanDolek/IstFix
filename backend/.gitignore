@@ -1,17 +1,40 @@
 # backend/.gitignore
 
-# Python
+# --- Python ve Sanal Ortam ---
 __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
+env/
+
+# --- Hassas Bilgiler (KRİTİK!!!) ---
 .env
 
-# Database & IDE
+# --- Database ---
+*.db
+*.sqlite3
+*.sql
+*.dump
+
+# --- Projeye Özel Medya ve Çıktılar ---
+uploads/
+# YOLO modelinin çalışma anında oluşturduğu geçici dosyalar veya loglar
+runs/
+*.log
+
+# --- Yapay Zeka Modelleri ---
+ml_models/*.pt
+best.pt
+last.pt
+
+# --- Editör ve Sistem Dosyaları ---
 .vscode/
 .idea/
-*.db
+.DS_Store
+Thumbs.db
 
-# Project Specific
-uploads/
-ml_models/best.pt
+# --- Test ve Raporlama ---
+.pytest_cache/
+.coverage
+htmlcov/

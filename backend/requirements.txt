@@ -1,17 +1,40 @@
 # backend/requirements.txt
 
+# Web Framework & Server
 fastapi
 uvicorn[standard]
+python-multipart
+httpx
+
+# Database & Migrations
 sqlalchemy
 psycopg2-binary
-python-dotenv
-python-multipart
+geoalchemy2
+alembic
+
+# Security & Authentication
 python-jose[cryptography]
 passlib[bcrypt]
+# Önemli: Passlib ile uyum için bcrypt versiyonu sabitlendi
 bcrypt==4.0.1
-pydantic[email]
-email-validator
+python-dotenv
+
+# AI & Media Processing
+# Gemini ve YOLO servisleri için
 google-generativeai
 ultralytics
+Pillow
+
+# Geography & Maps
 geopy
-geoalchemy2
+
+# Email Service
+# Belediyeye bildirim göndermek için
+sendgrid
+
+# Validation & Testing
+pydantic[email]
+email-validator
+pytest
+pytest-asyncio
+pytest-cov
