@@ -17,7 +17,7 @@ router = APIRouter()
 # Fotoğrafların kaydedileceği klasör yolu
 UPLOAD_DIR = "uploads"
 
-# Klasör yoksa oluştur
+#1. Klasör yoksa oluştur
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -27,14 +27,18 @@ async def create_report(
     longitude: float = Form(...),
     image: UploadFile = File(...),
     db: Session = Depends(get_db)
+    # current_user: User = Depends(get_current_user)  # <-- Gerçek sistemde DB'den böyle gelir
 ):
+    # --- KULLANICI BİLGİSİ ÇEKME ---
+    # Normalde yukarıdaki 'Depends' sayesinde o an login olan kişinin tüm bilgileri 
+    # 'current_user' objesine dolar ve 'current_user.email' ile ulaşılır
+    
+    # Şimdilik test için manuel mail adresi tanımlıyorum:
+    reporter_email = "test@example.com" # Burası ileride current_user.email olacak
+
     """
     İstFix Ana Akışı: Fotoğrafı işler, AI analizini yapar, DB'ye kaydeder ve belediyeye SendGrid ile mail atar.
     """
-    
-    # 1. 'uploads' klasörünün varlığını kontrol et, yoksa oluştur
-    if not os.path.exists(UPLOAD_DIR):
-        os.makedirs(UPLOAD_DIR)
 
     # 2. Fotoğrafı Sunucuya Kaydet
     file_extension = image.filename.split(".")[-1]
@@ -85,39 +89,42 @@ async def create_report(
     
     # Mail içeriğini  HTML formatına çevir
     html_content = f"""
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h2 style="color: #2c3e50;">Yeni Altyapı Sorunu Bildirimi</h2>
-        <p><strong>Sayın Yetkili,</strong></p>
-        <p>İstFix sistemi üzerinden ilçeniz sınırları dahilinde yeni bir altyapı sorunu bildirilmiştir.</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Tespit Edilen Kategori:</strong></td>
-                <td style="padding: 8px; border: 1px solid #ddd;">{category.upper()}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>İlgili Belediye:</strong></td>
-                <td style="padding: 8px; border: 1px solid #ddd;">{municipality_name}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Konum (Enlem, Boylam):</strong></td>
-                <td style="padding: 8px; border: 1px solid #ddd;">{latitude}, {longitude}</td>
-            </tr>
-        </table>
-        
-        <h3 style="color: #2c3e50;">Vatandaş Tarafından Oluşturulan Dilekçe:</h3>
-        <blockquote style="border-left: 4px solid #3498db; padding-left: 15px; margin-left: 0; font-style: italic; background-color: #f0f8ff; padding: 10px;">
-            {complaint_text.replace('\n', '<br>')}
-        </blockquote>
-        
-        <p><em>Olay yerine ait fotoğraf bu e-postanın ekinde sunulmuştur.</em></p>
-        <hr>
-        <p style="font-size: 12px; color: #7f8c8d;">İyi çalışmalar dileriz.<br><strong>İstFix Otomatik Bildirim Sistemi</strong></p>
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+    <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">İstFix | Altyapı Sorun Bildirimi</h2>
+    <p>Sayın Yetkili,</p>
+    <p>İstanbul genelinde yürütülen akıllı şehir ve altyapı iyileştirme çalışmaları kapsamında, vatandaşlar tarafından sistemimize bir saha raporu iletilmiştir.</p>
+    <div style="background-color: #f9f9f9; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0;">
+        <strong>Tespit Edilen Kategori:</strong> {category.upper()}<br>
+        <strong>Konum:</strong> {municipality_name}<br>
+        <strong>Raporu Gönderen:</strong> {reporter_email}<br>  
+        <strong>Rapor Özeti:</strong> {complaint_text}
     </div>
+
+    <p>Ekte, yapay zeka tarafından analiz edilen ve sorunun konumunu/durumunu belgeleyen saha fotoğrafı yer almaktadır.</p>
+    
+    <p>Gereğinin yapılmasını ve sürecin takibi için sistemimize geri bildirimde bulunulmasını arz ederiz.</p>
+    
+    <br>
+    <p style="font-size: 12px; color: #7f8c8d;">
+        <strong>İstFix Teknik Bilgi Notu:</strong><br>
+        Bu rapor, vatandaş duyarlılığı ve yapay zeka tabanlı nesne tespiti (YOLOv8 ve Roboflow) teknolojisi kullanılarak otomatik olarak oluşturulmuştur. 
+        Coğrafi konum verileri GPS üzerinden doğrulanmıştır.
+    </p>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+    
+    <footer style="font-size: 11px; color: #bdc3c7; text-align: center;">
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p>İstFix - Akıllı Şehir Raporlama Sistemi | 2026</p>
+        <p>Bu rapor, {reporter_email} adresli kullanıcı tarafından mobil uygulama üzerinden oluşturulmuştur.</p>
+    </footer>
+</div>
     """
     
     # Test için test mailine gönder
-    test_receiver_email = "istfix.app@gmail.com" # Test edeceğim mail adresi
+    test_receiver_email = "odun.kro@gmail.com" # Test edeceğim mail adresi
+    
+    print(f"DEBUG: {test_receiver_email} adresine mail gönderimi başlatılıyor...")
     
     mail_sent = send_complaint_email(
         target_email=test_receiver_email,
@@ -126,7 +133,10 @@ async def create_report(
         image_path=file_path
     )
 
-    if not mail_sent:
-        print("UYARI: Şikayet DB'ye kaydedildi ancak SendGrid ile e-posta gönderilemedi.")
-
+    if mail_sent:
+        print(f"BAŞARI: Mail {test_receiver_email} adresine başarıyla iletildi!")
+    else:
+        # Burası tetikleniyorsa mail_service.py içinde bir sorun vardır
+        print("HATA: SendGrid maili gönderemedi. Lütfen API anahtarını ve Sender mailini kontrol et.")
+        
     return new_report

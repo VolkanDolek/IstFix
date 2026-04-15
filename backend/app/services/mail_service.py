@@ -1,9 +1,12 @@
 # backend/app/services/mail_service.py
 import os
 import base64
+import ssl
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+from sendgrid.helpers.mail import Mail, ReplyTo, Attachment, FileContent, FileName, FileType, Disposition
 from app.core.config import settings
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 def send_complaint_email(target_email: str, subject: str, content: str, image_path: str = None) -> bool:
     """
@@ -17,11 +20,13 @@ def send_complaint_email(target_email: str, subject: str, content: str, image_pa
 
     # 1. Temel Mail Yapısını Oluştur
     message = Mail(
-        from_email=settings.SENDGRID_FROM_EMAIL,
+        from_email=settings.SENDGRID_FROM_EMAIL, #'istfix.app@gmail.com' olmalı
         to_emails=target_email,
         subject=subject,
         html_content=content.replace('\n', '<br>') # Düz metni HTML formatına uygun hale getiriyoruz
     )
+    
+    message.reply_to = ReplyTo("istfix.app@gmail.com", "İstFix Destek Ekibi")
 
     # 2. Fotoğraf Varsa Maile Ekle (Attachment)
     if image_path and os.path.exists(image_path):
