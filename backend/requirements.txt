@@ -21,7 +21,7 @@ python-dotenv
 
 # AI & Media Processing
 # Gemini ve YOLO servisleri için
-google-generativeai
+google-genai
 ultralytics
 Pillow
 

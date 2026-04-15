@@ -1,11 +1,11 @@
 # backend/app/services/ai_service.py
 import os
-import google.generativeai as genai
+from google.genai import Client
 from ultralytics import YOLO
 from app.core.config import settings
 
 # 1. Gemini'yi Başlat
-genai.configure(api_key=settings.GEMINI_API_KEY)
+client = Client(api_key=settings.GEMINI_API_KEY)
 
 # 2. YOLOv8 Modelini Yükle 
 # (İleride 'best.pt' dosyasını ml_models klasörüne koyduğumuzda burası aktif olacak)
@@ -25,10 +25,9 @@ def analyze_image_with_yolo(image_path: str) -> str:
     return "pothole" # Şimdilik test için her fotoğrafa "pothole" desin.
 
 def generate_complaint_text(category: str) -> str:
-    """Gemini'ye kategoriyi verip resmi bir dilekçe yazdırır"""
-    if not settings.GEMINI_API_KEY:
-        return "Otomatik şikayet metni oluşturulamadı (API Key eksik)."
-
+    """
+    Kullanıcının belirlediği kısıtlamalarla kısa ve resmi şikayet metni oluşturur.
+    """
     prompt = f"""
     Sen İstanbul'da yaşayan duyarlı bir vatandaşsın. 
     Karşılaştığın bir altyapı sorunu için belediyeye resmi bir şikayet metni yazıyorsun.
@@ -36,9 +35,19 @@ def generate_complaint_text(category: str) -> str:
     Tespit edilen '{category}' sorunu ile ilgili belediyeye iletilmek üzere en fazla 1-2 cümlelik, çok kısa ve resmi bir Türkçe şikayet metni oluştur. 
     Lütfen sadece sorunu bildiren ve müdahale talep eden bu cümleleri yaz; selamlama, başlık, tarih, isim veya ekstra hiçbir kelime kesinlikle ekleme.
     """
+
     try:
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt
+        )
+        
+        if response and response.text:
+            # Metni temizleyip döndür
+            return response.text.strip()
+        else:
+            return f"Tespit edilen {category} sorununun ivedilikle giderilmesini talep ediyorum."
+
     except Exception as e:
-        return f"Gemini metin üretemedi: {str(e)}"
+        print(f"Gemini API Hatası: {e}")
+        return f"{category} hakkında gerekli onarım çalışmalarının başlatılmasını rica ederim."
