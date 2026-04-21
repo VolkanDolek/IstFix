@@ -1,5 +1,5 @@
 # backend/app/schemas/citizen_schema.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from uuid import UUID
 from datetime import datetime
 
@@ -17,5 +17,5 @@ class CitizenResponse(BaseModel):
     registrationDate: datetime
     isActive: bool
 
-    class Config:
-        from_attributes = True  # Veritabanı modelini JSON'a çevirmeye yarar
+# Yeni kullanım: Pydantic v2 standardı
+model_config = ConfigDict(from_attributes=True)
