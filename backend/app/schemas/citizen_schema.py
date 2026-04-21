@@ -1,18 +1,21 @@
 # backend/app/schemas/user_schema.py
 from pydantic import BaseModel, EmailStr
+from uuid import UUID
 from datetime import datetime
 
 # Flutter'dan Kayıt Olurken Gelecek Veri (Giriş)
-class UserCreate(BaseModel):
-    email: EmailStr  # Sadece geçerli email formatını kabul eder (@ işareti vb.)
+class CitizenCreate(BaseModel):
+    name: str
+    emailAddress: EmailStr
     password: str
 
 # API'den Flutter'a Dönecek Veri (Çıkış - Şifre Yok!)
-class UserResponse(BaseModel):
-    id: int
-    email: EmailStr
-    is_active: bool
-    created_at: datetime
+class CitizenResponse(BaseModel):
+    id: UUID
+    name: str
+    emailAddress: EmailStr
+    registrationDate: datetime
+    isActive: bool
 
     class Config:
         from_attributes = True  # Veritabanı modelini JSON'a çevirmeye yarar

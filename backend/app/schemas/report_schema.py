@@ -1,25 +1,39 @@
 # backend/app/schemas/report_schema.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
-# Flutter'dan Şikayet Gönderirken Gelecek Veri
+# 1. YOLOv8 Analiz Sonuçları İçin Alt Şema (ER: ISSUE_CLASSIFICATION tablosu)
+class IssueClassificationResponse(BaseModel):
+    categoryLabel: str
+    confidenceScore: float
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# 2. Mobil Uygulamadan Rapor Gönderilirken Gelecek Veri (Kategori yok, AI bulacak)
 class ReportCreate(BaseModel):
-    category: str
-    latitude: float   # Enlem (Örn: 41.0082)
-    longitude: float  # Boylam (Örn: 28.9784)
-    # Fotoğrafı ayrı bir dosya (UploadFile) olarak alacağımız için buraya koymuyoruz
+    latitude: float
+    longitude: float
+    writtenDescription: Optional[str] = None
 
-# API'den Flutter'a (Harita Ekranına) Dönecek Şikayet Verisi
+# 3. API'den Haritaya Dönecek Olan Rapor Verisi
 class ReportResponse(BaseModel):
-    id: int
-    user_id: int
-    category: str
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    municipality: Optional[str] = None
-    status: str
-    created_at: datetime
+    id: UUID
+    CITIZENId: UUID
+    MUNICIPALITYId: Optional[UUID] = None
+    
+    photoUrl: str
+    latitude: float
+    longitude: float
+    
+    writtenDescription: Optional[str] = None
+    isDescriptionAiGenerated: bool
+    submissionTimestamp: datetime
+    processingStatus: str
+    
+    # Kategori bilgisini ilişkili tablodan (ISSUE_CLASSIFICATION) otomatik çekecek yapı:
+    classification: Optional[IssueClassificationResponse] = None
 
-    class Config:
-        from_attributes = True
+    # Yeni kullanım: Pydantic v2 standardı
+    model_config = ConfigDict(from_attributes=True)
