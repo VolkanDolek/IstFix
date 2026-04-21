@@ -1,3 +1,4 @@
+# backend/app/models/citizen.py
 import uuid
 from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID

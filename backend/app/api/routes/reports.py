@@ -1,9 +1,11 @@
 # backend/app/api/routes/reports.py
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy.orm import Session
-import shutil
 import os
 import uuid
+import shutil
+import asyncio # Paralel çalışma için gerekli
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from sqlalchemy.orm import Session
+from PIL import Image # Görüntü küçültme için
 
 from app.core.database import get_db
 from app.models.report import Report
@@ -20,6 +22,19 @@ UPLOAD_DIR = "uploads"
 # Klasör yoksa oluştur
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+def resize_image(input_path: str, output_path: str, size=(1024, 1024)):
+    """
+    Fotoğrafı en boy oranını koruyarak küçültür ve optimize eder.
+    """
+    with Image.open(input_path) as img:
+        # Fotoğrafın dikey/yatay durumuna göre en boy oranını korur
+        img.thumbnail(size, Image.Resampling.LANCZOS)
+        # RGB'ye çevir (bazı formatlar sorun çıkarmasın diye)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        # Kaliteyi %85 yaparak dosya boyutunu ciddi oranda düşür
+        img.save(output_path, "JPEG", optimize=True, quality=85)
 
 @router.post("/upload", response_model=ReportResponse)
 async def create_report(
@@ -48,26 +63,60 @@ async def create_report(
 
     # 1. Dosya İşlemleri
     file_extension = image.filename.split(".")[-1]
-    file_name = f"{uuid.uuid4()}.{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
+    unique_id = uuid.uuid4()
+    original_file_name = f"{unique_id}.{file_extension}"
+    original_path = os.path.join(UPLOAD_DIR, original_file_name)
     
     try:
-        with open(file_path, "wb") as buffer:
+        with open(original_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Dosya kaydetme hatası: {str(e)}")
 
-    # 2. AI ve Geo Servisleri Tetikle
+    # --- YENİ: MAİL İÇİN KÜÇÜLTÜLMÜŞ KOPYA OLUŞTUR ---
+    resized_file_name = f"{unique_id}_thumb.jpg"
+    resized_path = os.path.join(UPLOAD_DIR, resized_file_name)
+    
+    try:
+        # Orijinal dosyayı bozmadan, sadece mail için küçük bir kopyasını yaratıyoruz
+        resize_image(original_path, resized_path)
+    except Exception as e:
+        print(f"DEBUG: Resize hatası (Orijinal kullanılacak): {e}")
+        resized_path = original_path # Hata olursa orijinali gönder
+
+    # 2. AI Analizlerini Başlat (Paralel)
     # YOLOv8 ile kategori ve güven skoru tespiti (ISSUE_CLASSIFICATION uyumlu)
-    yolo_result = analyze_image_with_yolo(file_path)
+    yolo_result = analyze_image_with_yolo(original_path) # YOLO tam kalite fotoğrafı görsün
     category_label = yolo_result["categoryLabel"] # String'i içinden çekiyoruz
     confidence_score = yolo_result["confidenceScore"] # İleride veritabanına kaydetmek için
+
+    # --- HIZLANDIRMA NOKTASI: PARALEL ÇALIŞMA ---
+    # Gemini metin üretimi ve Geopy konum tespiti dış servislere (internet) bağlıdır.
+    # Bunları arka arkaya değil, AYNI ANDA başlatıyoruz.
+
+    print("DEBUG: Gemini ve Geopy aynı anda başlatılıyor...")
+    
+    # asyncio.gather kullanarak iki süreci paralel koşturuyoruz
+    # Not: get_municipality_from_coords senkron ise asyncio.to_thread ile sarmalıyoruz
+    tasks = [
+        asyncio.to_thread(generate_complaint_text, category_label),
+        asyncio.to_thread(get_municipality_from_coords, latitude, longitude)
+    ]
     
     # Gemini ile resmi dilekçe metni oluşturma
-    complaint_text = generate_complaint_text(category_label)
-    
     # Coğrafi Servis ile Belediye Tespiti
-    municipality_name = get_municipality_from_coords(latitude, longitude)
+    try:
+        # Burada listeyi 'unpack' ederek (*tasks) gather'a veriyoruz
+        results = await asyncio.gather(*tasks)
+        complaint_text = results[0]
+        municipality_name = results[1]
+    except Exception as e:
+        print(f"DEBUG HATA: Paralel işlemler sırasında bir sorun oluştu: {e}")
+        complaint_text = "Rapor özeti oluşturulamadı."
+        municipality_name = "Konum tespit edilemedi."
+    
+    #complaint_text = generate_complaint_text(category_label)
+    #municipality_name = get_municipality_from_coords(latitude, longitude)
 
     # 3. Veritabanı Kaydı
     final_description = writtenDescription if writtenDescription else complaint_text
@@ -75,7 +124,7 @@ async def create_report(
     
     new_report = Report(
         CITIZENId=test_citizen.id,
-        photoUrl=file_path,
+        photoUrl=original_path, # DB'de orijinal yol kalsın
         latitude=latitude,
         longitude=longitude,
         writtenDescription=final_description,
@@ -130,12 +179,19 @@ async def create_report(
     
     print(f"DEBUG: {test_receiver_email} adresine mail gönderimi başlatılıyor...")
     
-    mail_sent = send_complaint_email(target_email=test_receiver_email, subject=email_subject, content=html_content, image_path=file_path)
+    mail_sent = send_complaint_email(target_email=test_receiver_email, subject=email_subject, content=html_content, image_path=resized_path) # Burası değişti!
 
     if mail_sent:
+        print(f"DEBUG: EmailDelivered to {test_receiver_email}.")
         new_report.processingStatus = "EmailDelivered"
     else:
         new_report.processingStatus = "EmailDispatchFailed"
     
     db.commit()
+
+    # (Opsiyonel) Mail gittikten sonra thumbnail dosyası silebiliriz, çünkü artık ihtiyacımız kalmaz. 
+    # Orijinal dosya DB'de kalmaya devam eder.
+    if os.path.exists(resized_path):
+        os.remove(resized_path)
+
     return new_report
