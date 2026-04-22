@@ -9,7 +9,7 @@ from app.core.config import settings
 
 # Modellerin metadata'ya kaydedilmesi için burada import edilmesi şarttır
 # Aksi halde create_all komutu tabloları oluşturamaz
-from app.models import citizen, report
+from app.models import citizen, report, municipality
 
 # 1. Veritabanı tablolarını otomatik oluştur
 # Not: Profesyonel projelerde ileride 'Alembic' kullanılmalıdır.

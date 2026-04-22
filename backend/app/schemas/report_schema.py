@@ -2,6 +2,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
+from app.schemas.municipality_schema import MunicipalityResponse
 from uuid import UUID
 
 # 1. YOLOv8 Analiz Sonuçları İçin Alt Şema (ER: ISSUE_CLASSIFICATION tablosu)
@@ -32,6 +33,9 @@ class ReportResponse(BaseModel):
     submissionTimestamp: datetime
     processingStatus: str
     
+    # Raporun hangi belediyeye ait olduğu obje olarak döner
+    municipality: Optional[MunicipalityResponse] = None
+
     # Kategori bilgisini ilişkili tablodan (ISSUE_CLASSIFICATION) otomatik çekecek yapı:
     classification: Optional[IssueClassificationResponse] = None
 

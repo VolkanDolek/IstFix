@@ -10,7 +10,9 @@ from PIL import Image # Görüntü küçültme için
 from app.core.database import get_db
 from app.models.report import Report
 from app.models.citizen import Citizen
+from app.models.municipality import Municipality
 from app.schemas.report_schema import ReportResponse
+from app.schemas.municipality_schema import MunicipalityResponse
 from app.services.ai_service import analyze_image_with_yolo, generate_complaint_text
 from app.services.geo_service import get_municipality_from_coords
 from app.services.mail_service import send_complaint_email
@@ -47,8 +49,8 @@ async def create_report(
 ):
     # --- KULLANICI BİLGİSİ ÇEKME ---
     # Normalde yukarıdaki 'Depends' sayesinde o an login olan kişinin tüm bilgileri 
-    # 'current_user' objesine dolar ve 'current_user.email' ile ulaşılır
-    
+
+    # 1. Citizen Kontrolü
     # Şimdilik test için manuel mail adresi tanımlıyorum:
     # Test için db'deki ilk vatandaşı çekiyoruz (İleride JWT'den gelecek)
     test_citizen = db.query(Citizen).first()
@@ -61,7 +63,7 @@ async def create_report(
     İstFix Ana Akışı: Fotoğrafı işler, AI analizini yapar, DB'ye kaydeder ve belediyeye SendGrid ile mail atar.
     """
 
-    # 1. Dosya İşlemleri
+    # 2. Dosya İşlemleri (Orijinal ve Thumbnail)
     file_extension = image.filename.split(".")[-1]
     unique_id = uuid.uuid4()
     original_file_name = f"{unique_id}.{file_extension}"
@@ -84,7 +86,7 @@ async def create_report(
         print(f"DEBUG: Resize hatası (Orijinal kullanılacak): {e}")
         resized_path = original_path # Hata olursa orijinali gönder
 
-    # 2. AI Analizlerini Başlat (Paralel)
+    # 3. GEM ve GEO AI Analizlerini Başlat (Paralel)
     # YOLOv8 ile kategori ve güven skoru tespiti (ISSUE_CLASSIFICATION uyumlu)
     yolo_result = analyze_image_with_yolo(original_path) # YOLO tam kalite fotoğrafı görsün
     category_label = yolo_result["categoryLabel"] # String'i içinden çekiyoruz
@@ -108,22 +110,37 @@ async def create_report(
     try:
         # Burada listeyi 'unpack' ederek (*tasks) gather'a veriyoruz
         results = await asyncio.gather(*tasks)
-        complaint_text = results[0]
-        municipality_name = results[1]
+        complaint_text = results[0]  # Gemini'den gelen metin
+        municipality_name = results[1]  # Geopy'den gelen belediye ismi
     except Exception as e:
         print(f"DEBUG HATA: Paralel işlemler sırasında bir sorun oluştu: {e}")
         complaint_text = "Rapor özeti oluşturulamadı."
-        municipality_name = "Konum tespit edilemedi."
+        municipality_name = "Bilinmeyen"
     
     #complaint_text = generate_complaint_text(category_label)
     #municipality_name = get_municipality_from_coords(latitude, longitude)
 
-    # 3. Veritabanı Kaydı
+    # --- YENİ: BELEDİYE EŞLEŞTİRME MANTIĞI ---
+    # Geo servisinden gelen isimle veritabanındaki belediyeyi buluyoruz
+    db_municipality = db.query(Municipality).filter(Municipality.name == municipality_name).first()
+
+    target_municipality_id = None
+    target_email = "test1@gmail.com" # Varsayılan fallback mail
+
+    if db_municipality:
+        target_municipality_id = db_municipality.id
+        target_email = db_municipality.officialEmail
+        print(f"DEBUG: Belediye eşleşti: {db_municipality.name}, Mail: {target_email}")
+    else:
+        print(f"DEBUG: '{municipality_name}' veritabanında bulunamadı. Varsayılan mail kullanılacak.")
+
+    # 4. Veritabanı Kaydı
     final_description = writtenDescription if writtenDescription else complaint_text
     is_ai_generated = False if writtenDescription else True
     
     new_report = Report(
         CITIZENId=test_citizen.id,
+        MUNICIPALITYId=target_municipality_id, # Tespit edilen belediye ID 
         photoUrl=original_path, # DB'de orijinal yol kalsın
         latitude=latitude,
         longitude=longitude,
@@ -140,7 +157,7 @@ async def create_report(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Veritabanı kayıt hatası: {str(e)}")
 
-    # 4. Mail Gönderimi
+    # 5. Mail Gönderimi
     email_subject = f"İstFix Resmi Bildirimi: {category_label.upper()} - {municipality_name}"
     
     # Mail içeriğini  HTML formatına çevir
@@ -174,15 +191,16 @@ async def create_report(
     </div>
     """
     
-    # Test için test mailine gönder
-    test_receiver_email = "odun.kro@gmail.com" # Test edeceğim mail adresi
-    
-    print(f"DEBUG: {test_receiver_email} adresine mail gönderimi başlatılıyor...")
-    
-    mail_sent = send_complaint_email(target_email=test_receiver_email, subject=email_subject, content=html_content, image_path=resized_path) # Burası değişti!
+    print(f"DEBUG: {target_email} adresine mail gönderiliyor...")
+    mail_sent = send_complaint_email(
+        target_email=target_email, # Artık dinamik!
+        subject=email_subject, 
+        content=html_content, 
+        image_path=resized_path
+    )
 
     if mail_sent:
-        print(f"DEBUG: EmailDelivered to {test_receiver_email}.")
+        print(f"DEBUG: EmailDelivered to {target_email}.")
         new_report.processingStatus = "EmailDelivered"
     else:
         new_report.processingStatus = "EmailDispatchFailed"
