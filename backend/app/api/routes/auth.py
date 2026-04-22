@@ -37,7 +37,11 @@ def register(citizen: CitizenCreate, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Kullanıcı girişi yapar ve Token (Dijital Kimlik Kartı) verir"""
+    """
+    Kullanıcı girişi yapar ve Token (Dijital Kimlik Kartı) verir.
+    \n
+    **NOT:** 'username' alanına kayıt olunan **Email** adresini yaz ve 'password' alanına şifreyi yazın.
+    """
     # 1. Kullanıcıyı bul (OAuth2 form_data.username bekler, biz oraya email gireceğiz)
     citizen = db.query(Citizen).filter(Citizen.emailAddress == form_data.username).first()
     

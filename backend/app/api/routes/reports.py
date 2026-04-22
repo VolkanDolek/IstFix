@@ -16,6 +16,7 @@ from app.schemas.municipality_schema import MunicipalityResponse
 from app.services.ai_service import analyze_image_with_yolo, generate_complaint_text
 from app.services.geo_service import get_municipality_from_coords
 from app.services.mail_service import send_complaint_email
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -44,20 +45,12 @@ async def create_report(
     longitude: float = Form(...),
     writtenDescription: str = Form(None),
     image: UploadFile = File(...),
-    db: Session = Depends(get_db)
-    # current_user: User = Depends(get_current_user)  # <-- Gerçek sistemde DB'den böyle gelir
+    db: Session = Depends(get_db),
+    current_user: Citizen = Depends(get_current_user)
 ):
     # --- KULLANICI BİLGİSİ ÇEKME ---
-    # Normalde yukarıdaki 'Depends' sayesinde o an login olan kişinin tüm bilgileri 
-
-    # 1. Citizen Kontrolü
-    # Şimdilik test için manuel mail adresi tanımlıyorum:
-    # Test için db'deki ilk vatandaşı çekiyoruz (İleride JWT'den gelecek)
-    test_citizen = db.query(Citizen).first()
-    if not test_citizen:
-        raise HTTPException(status_code=400, detail="Sistemde kayıtlı Citizen bulunamadı. Lütfen önce kayıt olun.")
-    
-    reporter_email = test_citizen.emailAddress # Burası ileride current_user.email olacak
+    # Değişiklik : Manuel 'test_citizen' sorgusu kaldırıldı, direkt 'current_user' kullanılıyor.
+    reporter_email = current_user.emailAddress
 
     """
     İstFix Ana Akışı: Fotoğrafı işler, AI analizini yapar, DB'ye kaydeder ve belediyeye SendGrid ile mail atar.
@@ -116,9 +109,6 @@ async def create_report(
         print(f"DEBUG HATA: Paralel işlemler sırasında bir sorun oluştu: {e}")
         complaint_text = "Rapor özeti oluşturulamadı."
         municipality_name = "Bilinmeyen"
-    
-    #complaint_text = generate_complaint_text(category_label)
-    #municipality_name = get_municipality_from_coords(latitude, longitude)
 
     # --- YENİ: BELEDİYE EŞLEŞTİRME MANTIĞI ---
     # Geo servisinden gelen isimle veritabanındaki belediyeyi buluyoruz
@@ -139,7 +129,7 @@ async def create_report(
     is_ai_generated = False if writtenDescription else True
     
     new_report = Report(
-        CITIZENId=test_citizen.id,
+        CITIZENId=current_user.id,
         MUNICIPALITYId=target_municipality_id, # Tespit edilen belediye ID 
         photoUrl=original_path, # DB'de orijinal yol kalsın
         latitude=latitude,
@@ -213,3 +203,14 @@ async def create_report(
         os.remove(resized_path)
 
     return new_report
+
+@router.get("/me", response_model=list[ReportResponse])
+def get_my_reports(
+    db: Session = Depends(get_db),
+    current_user: Citizen = Depends(get_current_user)
+):
+    """
+    Giriş yapmış olan kullanıcının tüm geçmiş raporlarını listeler.
+    """
+    reports = db.query(Report).filter(Report.CITIZENId == current_user.id).all()
+    return reports

@@ -30,7 +30,7 @@ def seed_data():
         {"name": "Sarıyer", "email": test_email}
     ]
 
-    print(f"--- Belediye Verileri Ekleniyor (Şile -> {sile_email}) ---")
+    print(f"--- Belediye Verileri Ekleniyor  ---")
 
     try:
         for m_data in municipalities_to_add:
