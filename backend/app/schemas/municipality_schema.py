@@ -13,5 +13,5 @@ class MunicipalityResponse(BaseModel):
     name: str
     officialEmail: EmailStr
 
-# Yeni kullanım: Pydantic v2 standardı
+    # Yeni kullanım: Pydantic v2 standardı
     model_config = ConfigDict(from_attributes=True)

@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.models.report import Report
 from app.models.citizen import Citizen
 from app.models.municipality import Municipality
-from app.schemas.report_schema import ReportResponse
+from app.schemas.report_schema import ReportResponse, ReportStatusUpdate
 from app.schemas.municipality_schema import MunicipalityResponse
 from app.services.ai_service import analyze_image_with_yolo, generate_complaint_text
 from app.services.geo_service import get_municipality_from_coords
@@ -205,12 +205,56 @@ async def create_report(
     return new_report
 
 @router.get("/me", response_model=list[ReportResponse])
-def get_my_reports(
+def get_reports(
     db: Session = Depends(get_db),
     current_user: Citizen = Depends(get_current_user)
 ):
     """
-    Giriş yapmış olan kullanıcının tüm geçmiş raporlarını listeler.
+    Raporları listeler. 
+    Vatandaş ise: Sadece kendi raporlarını görür.
+    Admin ise: Veritabanındaki TÜM raporları görür.
     """
-    reports = db.query(Report).filter(Report.CITIZENId == current_user.id).all()
+    
+    # --- YETKİ KONTROLÜ VE FİLTRELEME ---
+    if current_user.isAdmin:
+        # Admin girişi tüm raporları çeker
+        print(f"DEBUG: Admin ({current_user.emailAddress}) tüm raporları çekiyor.")
+        reports = db.query(Report).all()
+    else:
+        # Normal kullanıcı sadece ona ait olanları çeker
+        print(f"DEBUG: Kullanıcı ({current_user.emailAddress}) kendi raporlarını çekiyor.")
+        reports = db.query(Report).filter(Report.CITIZENId == current_user.id).all()
+    
     return reports
+
+@router.patch("/{report_id}/status", response_model=ReportResponse)
+def update_report_status(
+    report_id: uuid.UUID,
+    status_data: ReportStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: Citizen = Depends(get_current_user)
+):
+    """
+    Sadece yetkili adminlerin rapor durumunu değiştirmesine izin verir.
+    """
+    # a. Güvenlik Kontrolü: Admin değilse direkt 403 (Yasak) döndür
+    if not current_user.isAdmin:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bu işlem için yönetici yetkisi gereklidir."
+        )
+
+    # b. Raporu bul ve güncelle
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Rapor bulunamadı.")
+
+    report.processingStatus = status_data.status
+    
+    try:
+        db.commit()
+        db.refresh(report)
+        return report
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Güncelleme hatası: {str(e)}")

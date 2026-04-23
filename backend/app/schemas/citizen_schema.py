@@ -16,6 +16,7 @@ class CitizenResponse(BaseModel):
     emailAddress: EmailStr
     registrationDate: datetime
     isActive: bool
+    isAdmin: bool
 
-# Yeni kullanım: Pydantic v2 standardı
-model_config = ConfigDict(from_attributes=True)
+    # Yeni kullanım: Pydantic v2 standardı
+    model_config = ConfigDict(from_attributes=True)

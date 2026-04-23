@@ -1,5 +1,5 @@
 # backend/app/schemas/report_schema.py
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 from typing import Optional
 from app.schemas.municipality_schema import MunicipalityResponse
@@ -38,6 +38,26 @@ class ReportResponse(BaseModel):
 
     # Kategori bilgisini ilişkili tablodan (ISSUE_CLASSIFICATION) otomatik çekecek yapı:
     classification: Optional[IssueClassificationResponse] = None
+
+    # --- URL DÖNÜŞTÜRÜCÜ ---
+    @field_validator("photoUrl")
+    @classmethod
+    def convert_path_to_url(cls, v: str) -> str:
+        if not v:
+            return v
+        if v.startswith("http"):
+            return v
+        
+        # KRİTİK: Buraya bilgisayarın yerel IP adresi yazılmalı.
+        # Terminale 'ipconfig' yazarak IPv4 adresi bulunabilir. (Örn: "http://192.168.1.35:8000")
+        # Localde denenecekse "http://localhost:8000" kullanılabilir.
+        base_url = "http://localhost:8000" 
+        clean_path = v.replace("\\", "/")
+        return f"{base_url}/{clean_path}"
+    
+# 4. Güncelleme Şeması (Belediye Rapor Durumu Güncellemek İstediğinde)
+class ReportStatusUpdate(BaseModel):
+    status: str
 
     # Yeni kullanım: Pydantic v2 standardı
     model_config = ConfigDict(from_attributes=True)

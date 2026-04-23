@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.citizen import Citizen
 from app.schemas.citizen_schema import CitizenCreate, CitizenResponse
 from app.core.security import get_password_hash, verify_password, create_access_token
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -56,4 +57,20 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # 3. Her şey doğruysa Token üret ve ver (İçine güvenli UUID'yi koyuyoruz)
     access_token = create_access_token(subject=str(citizen.id))
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Sadece token değil, kullanıcı bilgisini de dönüyoruz
+    # Böylece Flutter "isAdmin" bilgisini almak için ikinci bir istek atmak zorunda kalmaz.
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": {
+            "name": citizen.name,
+            "email": citizen.emailAddress,
+            "isAdmin": citizen.isAdmin
+        }
+    }
+
+# Giriş yapmış kullanıcının kendi bilgilerini almasını sağlayan rota
+@router.get("/me", response_model=CitizenResponse)
+def get_user_me(current_user: Citizen = Depends(get_current_user)):
+    """Aktif kullanıcının profil bilgilerini (isAdmin dahil) getirir."""
+    return current_user
