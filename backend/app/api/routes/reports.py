@@ -16,7 +16,7 @@ from app.schemas.municipality_schema import MunicipalityResponse
 from app.services.ai_service import analyze_image_with_yolo, generate_complaint_text
 from app.services.geo_service import get_municipality_from_coords
 from app.services.mail_service import send_complaint_email
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_admin
 
 router = APIRouter()
 
@@ -232,19 +232,13 @@ def update_report_status(
     report_id: uuid.UUID,
     status_data: ReportStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: Citizen = Depends(get_current_user)
+    current_admin: Citizen = Depends(get_current_admin)
 ):
     """
     Sadece yetkili adminlerin rapor durumunu değiştirmesine izin verir.
     """
-    # a. Güvenlik Kontrolü: Admin değilse direkt 403 (Yasak) döndür
-    if not current_user.isAdmin:
-        raise HTTPException(
-            status_code=403, 
-            detail="Bu işlem için yönetici yetkisi gereklidir."
-        )
 
-    # b. Raporu bul ve güncelle
+    # a. Raporu bul ve güncelle
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Rapor bulunamadı.")

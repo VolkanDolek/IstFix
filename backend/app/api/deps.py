@@ -42,3 +42,16 @@ def get_current_user(
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     
     return user
+
+def get_current_admin(
+    current_user: Citizen = Depends(get_current_user)
+) -> Citizen:
+    """
+    Sadece admin yetkisi olan kullanıcıları geçiren bağımlılık.
+    """
+    if not current_user.isAdmin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu işlem için yönetici yetkisi gereklidir."
+        )
+    return current_user

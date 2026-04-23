@@ -16,7 +16,7 @@ class Citizen(Base):
     passwordHash = Column(String(255), nullable=False)
     registrationDate = Column(DateTime, default=datetime.utcnow)
     isActive = Column(Boolean, default=True)
-    isAdmin = Column(Boolean, default=False) # Bu alan True ise kullanıcı rapor durumlarını değiştirebilir
+    isAdmin = Column(Boolean, default=False)
 
     # Raporlarla olan ters bağlantı
     reports = relationship("Report", back_populates="citizen")
