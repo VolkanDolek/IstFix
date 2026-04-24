@@ -87,3 +87,10 @@ def send_complaint_email(target_email: str, subject: str, content: str, image_pa
 
     # 3 deneme de başarısız olduysa False dön (reports.py bunu alıp "EmailDispatchFailed" yapacak)
     return False
+
+def send_otp_email(target_email: str, subject: str, content: str) -> bool:
+    """
+    Şifre sıfırlama kodlarını göndermek için kullanılan yardımcı fonksiyondur.
+    Arka planda ana send_complaint_email fonksiyonunu resimsiz (image_path=None) olarak çağırır.
+    """
+    return send_complaint_email(target_email, subject, content, image_path=None)

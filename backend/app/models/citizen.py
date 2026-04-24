@@ -18,5 +18,9 @@ class Citizen(Base):
     isActive = Column(Boolean, default=True)
     isAdmin = Column(Boolean, default=False)
 
+    # --- ŞİFRE SIFIRLAMA İÇİN ---
+    resetCode = Column(String(4), nullable=True) # 4 haneli doğrulama kodu
+    resetCodeExpiresAt = Column(DateTime, nullable=True) # Kodun son geçerlilik tarihi
+
     # Raporlarla olan ters bağlantı
     reports = relationship("Report", back_populates="citizen")

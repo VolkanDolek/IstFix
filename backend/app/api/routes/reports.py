@@ -153,7 +153,7 @@ async def create_report(
     # Mail içeriğini  HTML formatına çevir
     html_content = f"""
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
-        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">İstFix | Altyapı Sorun Bildirimi</h2>
+        <h2 style="color: #0b3d6b; border-bottom: 2px solid #3498db; padding-bottom: 10px;">İstFix | Altyapı Sorun Bildirimi</h2>
         <p>Sayın Yetkili,</p>
         <p>İstanbul genelinde yürütülen akıllı şehir ve altyapı iyileştirme çalışmaları kapsamında, vatandaşlar tarafından sistemimize bir saha raporu iletilmiştir.</p>
 
@@ -169,7 +169,7 @@ async def create_report(
         
         <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
             <div style="max-width: 600px; margin: 0 auto;">
-                <p style="font-size: 13px; color: #2c3e50; font-weight: bold; margin-bottom: 5px;">İstFix Akıllı Şehir Raporlama Sistemi</p>
+                <p style="font-size: 13px; color: #0b3d6b; font-weight: bold; margin-bottom: 5px;">İstFix Akıllı Şehir Raporlama Sistemi</p>
                 <p style="font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 15px;">
                     Bu e-posta otomatik bir saha raporudur. Kamu yararı amacıyla tasarlanmıştır.
                 </p>

@@ -1,6 +1,6 @@
 # backend/app/api/api_router.py
 from fastapi import APIRouter
-from app.api.routes import auth, reports, municipalities # Mevcut rotalarını buraya ekliyoruz
+from app.api.routes import auth, reports, municipalities, citizens # Mevcut rotalarını buraya ekliyoruz
 
 api_router = APIRouter()
 
@@ -22,9 +22,12 @@ api_router.include_router(
     tags=["Reports"]
 )
 
-# --- GELECEKTE EKLENECEK ROTALAR (ER Diyagramına Göre) ---
-# Vatandaş profili ve hesap yönetimi için:
-# api_router.include_router(citizens.router, prefix="/citizens", tags=["Citizens"])
+# Citizen yönetimi rotaları
+api_router.include_router(
+    citizens.router, 
+    prefix="/citizens", 
+    tags=["Citizens"]
+)
 
 # Belediye yönetimi için:
 api_router.include_router(
