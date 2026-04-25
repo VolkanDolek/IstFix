@@ -1,23 +1,40 @@
 # backend/app/models/report.py
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
-from sqlalchemy.sql import func
-from geoalchemy2 import Geometry # PostGIS için özel kütüphanemiz
+import uuid
+from sqlalchemy import Column, String, Float, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship # İlişkiler için
+from geoalchemy2 import Geometry
+from datetime import datetime
 from app.core.database import Base
 
 class Report(Base):
     __tablename__ = "reports"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id")) # Hangi kullanıcı gönderdi?
+    # 1. UUID Anahtarlar
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    CITIZENId = Column(UUID(as_uuid=True), ForeignKey("citizens.id"), nullable=False)
     
-    category = Column(String, index=True) # Örn: road_damage, broken_streetlight
-    description = Column(String) # Gemini'nin oluşturduğu resmi şikayet metni
-    image_url = Column(String) # Fotoğrafın sunucudaki konumu
+    # Municipality tablosu artık hazır olduğu için burası aktif
+    MUNICIPALITYId = Column(UUID(as_uuid=True), ForeignKey("municipalities.id"), nullable=True) 
+
+    # 2. Medya ve Metin
+    photoUrl = Column(String(500))
+    writtenDescription = Column(Text, nullable=True)
+    isDescriptionAiGenerated = Column(Boolean, default=True)
     
-    # PostGIS ile Coğrafi Nokta (Point) - SRID 4326 (Standart GPS)
-    location = Column(Geometry(geometry_type='POINT', srid=4326))
+    # 3. Konum (ER Diyagramına göre Lat/Lon ayrı tutuluyor)
+    latitude = Column(Float)
+    longitude = Column(Float)
     
-    municipality = Column(String) # Örn: "Kadikoy Belediyesi"
-    status = Column(String, default="pending") # pending (bekliyor), resolved (çözüldü)
-    
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # (Opsiyonel) PostGIS hesaplamaları için GeoAlchemy kolonunu koruyabiliriz
+    # Veritabanında coğrafi indexleme yapmak istersek bu işe yarayacak
+    geom = Column(Geometry(geometry_type='POINT', srid=4326), nullable=True)
+
+    # 4. Zaman ve Durum
+    submissionTimestamp = Column(DateTime, default=datetime.utcnow)
+    processingStatus = Column(String(20), default="Pending") # Pending, Classifying, vb.
+
+    # --- İLİŞKİLER (RELATIONSHIPS) ---
+    # Bu kısımlar SQLAlchemy üzerinden nesnelere kolay erişim sağlar
+    citizen = relationship("Citizen", back_populates="reports")
+    municipality = relationship("Municipality", back_populates="reports", foreign_keys=[MUNICIPALITYId])

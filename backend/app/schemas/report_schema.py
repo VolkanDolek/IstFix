@@ -1,25 +1,63 @@
 # backend/app/schemas/report_schema.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 from typing import Optional
+from app.schemas.municipality_schema import MunicipalityResponse
+from uuid import UUID
 
-# Flutter'dan Şikayet Gönderirken Gelecek Veri
+# 1. YOLOv8 Analiz Sonuçları İçin Alt Şema (ER: ISSUE_CLASSIFICATION tablosu)
+class IssueClassificationResponse(BaseModel):
+    categoryLabel: str
+    confidenceScore: float
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# 2. Mobil Uygulamadan Rapor Gönderilirken Gelecek Veri (Kategori yok, AI bulacak)
 class ReportCreate(BaseModel):
-    category: str
-    latitude: float   # Enlem (Örn: 41.0082)
-    longitude: float  # Boylam (Örn: 28.9784)
-    # Fotoğrafı ayrı bir dosya (UploadFile) olarak alacağımız için buraya koymuyoruz
+    latitude: float
+    longitude: float
+    writtenDescription: Optional[str] = None
 
-# API'den Flutter'a (Harita Ekranına) Dönecek Şikayet Verisi
+# 3. API'den Haritaya Dönecek Olan Rapor Verisi
 class ReportResponse(BaseModel):
-    id: int
-    user_id: int
-    category: str
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    municipality: Optional[str] = None
-    status: str
-    created_at: datetime
+    id: UUID
+    CITIZENId: UUID
+    MUNICIPALITYId: Optional[UUID] = None
+    
+    photoUrl: str
+    latitude: float
+    longitude: float
+    
+    writtenDescription: Optional[str] = None
+    isDescriptionAiGenerated: bool
+    submissionTimestamp: datetime
+    processingStatus: str
+    
+    # Raporun hangi belediyeye ait olduğu obje olarak döner
+    municipality: Optional[MunicipalityResponse] = None
 
-    class Config:
-        from_attributes = True
+    # Kategori bilgisini ilişkili tablodan (ISSUE_CLASSIFICATION) otomatik çekecek yapı:
+    classification: Optional[IssueClassificationResponse] = None
+
+    # --- URL DÖNÜŞTÜRÜCÜ ---
+    @field_validator("photoUrl")
+    @classmethod
+    def convert_path_to_url(cls, v: str) -> str:
+        if not v:
+            return v
+        if v.startswith("http"):
+            return v
+        
+        # KRİTİK: Buraya bilgisayarın yerel IP adresi yazılmalı.
+        # Terminale 'ipconfig' yazarak IPv4 adresi bulunabilir. (Örn: "http://192.168.1.35:8000")
+        # Localde denenecekse "http://localhost:8000" kullanılabilir.
+        base_url = "http://localhost:8000" 
+        clean_path = v.replace("\\", "/")
+        return f"{base_url}/{clean_path}"
+    
+# 4. Güncelleme Şeması (Belediye Rapor Durumu Güncellemek İstediğinde)
+class ReportStatusUpdate(BaseModel):
+    status: str
+
+    # Yeni kullanım: Pydantic v2 standardı
+    model_config = ConfigDict(from_attributes=True)

@@ -1,16 +1,17 @@
 # backend/app/core/config.py
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# .env dosyasını bul ve yükle
-load_dotenv()
+class Settings(BaseSettings):
+    # Tip belirterek (str) bu değişkenlerin kesinlikle var olması gerektiğini söylüyoruz.
+    # Eğer .env dosyasında bunlardan biri eksikse, FastAPI sunucusu hiç başlamaz ve uyarır.
+    DATABASE_URL: str
+    SECRET_KEY: str
+    GEMINI_API_KEY: str
+    SENDGRID_API_KEY: str
+    SENDGRID_FROM_EMAIL: str
 
-class Settings:
-    # .env içindeki değerleri buraya çekiyoruz
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    SECRET_KEY = os.getenv("SECRET_KEY")
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-    SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
+    # Pydantic v2 standardı ile .env dosyasını otomatik okuma ayarı
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+# Tüm projenin kullanacağı tek bir ayar nesnesi oluşturuyoruz
 settings = Settings()
