@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.core.security import ALGORITHM
 from app.models.citizen import Citizen
+from app.models.token import BlacklistedToken
 
 # Swagger UI'da "Authorize" butonunun login rotasına bakmasını sağlar
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -20,6 +21,15 @@ def get_current_user(
     Bu fonksiyon her korumalı rotada çalışır. 
     Token'ı doğrular ve kullanıcıyı DB'den çekip döndürür.
     """
+    # ÖNCE: Token kara listede mi?
+    is_blacklisted = db.query(BlacklistedToken).filter(BlacklistedToken.token == token).first()
+    if is_blacklisted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Oturumunuz sonlandırılmış. Lütfen tekrar giriş yapın.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Kimlik bilgileri doğrulanamadı",

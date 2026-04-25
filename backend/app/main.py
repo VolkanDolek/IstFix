@@ -2,14 +2,16 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi_utilities import repeat_every
 
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
 from app.api.api_router import api_router
 from app.core.config import settings
+from app.services.token_service import cleanup_expired_tokens
 
 # Modellerin metadata'ya kaydedilmesi için burada import edilmesi şarttır
 # Aksi halde create_all komutu tabloları oluşturamaz
-from app.models import citizen, report, municipality
+from app.models import citizen, report, municipality, token
 
 # 1. Veritabanı tablolarını otomatik oluştur
 # Not: Profesyonel projelerde ileride 'Alembic' kullanılmalıdır.
@@ -21,6 +23,22 @@ app = FastAPI(
     description="İstanbul Akıllı Şehir Altyapı Raporlama Sistemi",
     version="1.0.0"
 )
+
+# --- OTOMATİK BLACKLIST TEMİZLİK GÖREVİ (24 Saatte Bir) ---
+@app.on_event("startup")
+@repeat_every(seconds=60 * 60 * 24) # 24 saat
+def auto_cleanup_task():
+    """Arka planda çalışan ve her gün blacklisted token'ları süpüren görev."""
+    db = SessionLocal()
+    try:
+        count = cleanup_expired_tokens(db)
+        if count > 0:
+            print(f"SİSTEM: Otomatik temizlik yapıldı, {count} eski token silindi.")
+    except Exception as e:
+        print(f"SİSTEM: Otomatik temizlik sırasında bir hata oluştu: {e}")
+    finally:
+        db.close()
+# ----------------------------------------------------------
 
 # 3. CORS Ayarları (Flutter/Mobil Erişim için Kritik)
 # Mobil uygulamanın sunucuyla sorunsuz konuşmasını sağlar.

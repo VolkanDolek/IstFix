@@ -2,6 +2,7 @@
 
 # Web Framework & Server
 fastapi
+fastapi-utilities
 uvicorn[standard]
 python-multipart
 httpx
