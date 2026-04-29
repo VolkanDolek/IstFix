@@ -84,6 +84,7 @@ async def create_report(
     yolo_result = analyze_image_with_yolo(original_path) # YOLO tam kalite fotoğrafı görsün
     category_label = yolo_result["categoryLabel"] # String'i içinden çekiyoruz
     confidence_score = yolo_result["confidenceScore"] # İleride veritabanına kaydetmek için
+    print(f"🚀 AI TEST -> Bulunan: {category_label} | Emin Olma Oranı: % {int(confidence_score * 100)}")
 
     # --- HIZLANDIRMA NOKTASI: PARALEL ÇALIŞMA ---
     # Gemini metin üretimi ve Geopy konum tespiti dış servislere (internet) bağlıdır.
