@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
-import 'package:istfix_app/features/auth/register_view.dart';
+import 'package:istfix_app/features/auth/welcome_view.dart';
 
 void main() {
   runApp(const IstFixApp());
@@ -19,7 +19,7 @@ class IstFixApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.bogazGecesi),
         useMaterial3: true,
       ),
-      home: const RegisterView(),
+      home: const WelcomeView(),
     );
   }
 }

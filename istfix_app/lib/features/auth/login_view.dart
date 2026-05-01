@@ -49,13 +49,9 @@ class _LoginViewState extends State<LoginView> {
         // Ana sayfa yönlendirmesi buraya eklenecek.
       }
     } catch (e) {
-      if (mounted) {
-        _showErrorDialog(e.toString().replaceAll("Exception: ", ""));
-      }
+      if (mounted) _showErrorDialog(e.toString().replaceAll("Exception: ", ""));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -83,6 +79,13 @@ class _LoginViewState extends State<LoginView> {
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.arkaplan,
@@ -100,38 +103,39 @@ class _LoginViewState extends State<LoginView> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 80),
-                        Text(
+                        const Text(
                           "Giriş Yap",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: AppColors.bogazGecesi,
                           ),
                         ),
-                        const SizedBox(height: 40),
+
+                        const SizedBox(height: 32),
 
                         _buildInputLabel("E-posta Adresi"),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _buildTextField(
                           controller: _emailController,
                           hintText: "E-posta adresinizi girin",
                           keyboardType: TextInputType.emailAddress,
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 10),
 
                         _buildInputLabel("Şifre"),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _buildTextField(
                           controller: _passwordController,
                           hintText: "********",
                           isPassword: true,
                           isPasswordVisible: _isPasswordVisible,
+                          showEyeIcon: true,
                           onVisibilityToggle: () => setState(
                             () => _isPasswordVisible = !_isPasswordVisible,
                           ),
                         ),
-
                         // Şifre sıfırlama yönlendirmesi
                         Align(
                           alignment: Alignment.centerRight,
@@ -143,13 +147,14 @@ class _LoginViewState extends State<LoginView> {
                                 "Şifreni mi unuttun ?",
                                 style: TextStyle(
                                   color: AppColors.halicAcigi,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+
+                        const SizedBox(height: 8),
 
                         _isLoading
                             ? const Center(
@@ -157,37 +162,39 @@ class _LoginViewState extends State<LoginView> {
                                   color: AppColors.bogazGecesi,
                                 ),
                               )
-                            : ElevatedButton(
-                                onPressed: _handleLogin,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.bogazGecesi,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
+                            : SizedBox(
+                                height: 46,
+                                child: ElevatedButton(
+                                  onPressed: _handleLogin,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.bogazGecesi,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 0,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: const Text(
-                                  "Giriş Yap",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                  child: const Text(
+                                    "Giriş Yap",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
 
-                        const SizedBox(height: 20),
-
+                        const SizedBox(height: 16),
                         // Kayıt sayfasına geçiş alanı (Link stili)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
                               "Hesabın yok mu? ",
-                              style: TextStyle(color: AppColors.bogazGecesi),
+                              style: TextStyle(
+                                color: AppColors.bogazGecesi,
+                                fontSize: 13,
+                              ),
                             ),
                             GestureDetector(
                               onTap: () {
@@ -201,6 +208,7 @@ class _LoginViewState extends State<LoginView> {
                                 "Kayıt Ol",
                                 style: TextStyle(
                                   color: AppColors.halicAcigi,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
                                   decorationColor: AppColors.halicAcigi,
@@ -210,12 +218,9 @@ class _LoginViewState extends State<LoginView> {
                           ],
                         ),
 
-                        const SizedBox(
-                          height: 60,
-                        ), // Link ile logo arası minimum güvenli boşluk
                         const Spacer(), // Logoyu en alta iter
                         _buildBrandLogo(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -254,9 +259,9 @@ class _LoginViewState extends State<LoginView> {
     return Text(
       label,
       style: const TextStyle(
-        fontSize: 14,
+        fontSize: 12,
         color: AppColors.bogazGecesi,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -268,9 +273,11 @@ class _LoginViewState extends State<LoginView> {
     TextInputType keyboardType = TextInputType.text,
     bool isPassword = false,
     bool isPasswordVisible = false,
+    bool showEyeIcon = false,
     VoidCallback? onVisibilityToggle,
   }) {
     return Container(
+      height: 44,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -279,24 +286,33 @@ class _LoginViewState extends State<LoginView> {
           width: 1.2,
         ),
       ),
+      alignment: Alignment.center,
       child: TextField(
         controller: controller,
         obscureText: isPassword && !isPasswordVisible,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.bogazGecesi, fontSize: 16),
+        style: const TextStyle(color: AppColors.bogazGecesi, fontSize: 14),
         decoration: InputDecoration(
+          isDense: true,
           hintText: hintText,
-          hintStyle: TextStyle(color: AppColors.bogazGecesi.withOpacity(0.5)),
+          hintStyle: TextStyle(
+            color: AppColors.bogazGecesi.withOpacity(0.5),
+            fontSize: 14,
+          ),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
+            horizontal: 12,
+            vertical: 10,
           ),
           border: InputBorder.none,
-          suffixIcon: isPassword
+          suffixIconConstraints: const BoxConstraints(
+            minHeight: 24,
+            minWidth: 40,
+          ),
+          suffixIcon: (isPassword && showEyeIcon)
               ? GestureDetector(
                   onTap: onVisibilityToggle,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.only(right: 12.0),
                     child: SvgPicture.asset(
                       isPasswordVisible
                           ? 'assets/icons/ic_eye_show.svg'
@@ -305,7 +321,7 @@ class _LoginViewState extends State<LoginView> {
                         AppColors.bogazGecesi,
                         BlendMode.srcIn,
                       ),
-                      width: 24,
+                      width: 20,
                     ),
                   ),
                 )

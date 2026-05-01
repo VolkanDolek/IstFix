@@ -4,6 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Kimlik doğrulama işlemlerini (Giriş, Kayıt, Çıkış) yöneten servis sınıfı.
 class AuthService {
   // Android emülatör üzerinden yerel makinedeki backend'e erişmek için 10.0.2.2 kullanılır.
+  // iOS Simulator için '127.0.0.1'
+  // Gerçek cihazla test için bilgisayarının yerel IP adresi
   final Dio _dio = Dio(
     BaseOptions(
       baseUrl: "http://10.0.2.2:8000/api",
@@ -17,9 +19,14 @@ class AuthService {
   /// Kullanıcı giriş işlemini gerçekleştirir ve JWT token'ı güvenli depolamaya kaydeder.
   Future<bool> login(String email, String password) async {
     try {
+      // FastAPI OAuth2 Login servisi "application/x-www-form-urlencoded" formatı
+      // ve "username" alanı beklediği için özel olarak yapılandırıldı.
       final response = await _dio.post(
         "/auth/login",
-        data: {"email": email, "password": password},
+        data: {"username": email, "password": password},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType, // Form formatı
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -30,16 +37,23 @@ class AuthService {
       return false;
     } on DioException catch (e) {
       _handleDioError(e);
-      return false;
+      return false; // Hata fırlatılmazsa false dön
     }
   }
 
   /// Yeni kullanıcı kaydı oluşturur.
   Future<bool> register(String name, String email, String password) async {
     try {
+      // Pydantic (CitizenCreate) şemasına tam uyumlu JSON body gönderimi
       final response = await _dio.post(
         "/auth/register",
-        data: {"name": name, "email": email, "password": password},
+        data: {
+          "name": name,
+          "emailAddress":
+              email, // Backend'deki isimlendirme (email -> emailAddress)
+          "password": password,
+          "kvkkAccepted": true, // Zorunlu KVKK alanı
+        },
       );
 
       // Backend genellikle başarılı kayıt sonrası 201 (Created) veya 200 döner.
@@ -48,11 +62,12 @@ class AuthService {
       }
       return false;
     } on DioException catch (e) {
-      // E-posta adresi zaten kullanımda olabilir (Genellikle 400 veya 409 döner)
+      // Backend'den gelen spesifik hata mesajını yakala
       if (e.response?.statusCode == 400 || e.response?.statusCode == 409) {
-        throw Exception(
-          "Bu e-posta adresi zaten bir hesaba bağlı. Lütfen farklı bir adres deneyiniz.",
-        );
+        final errorMessage =
+            e.response?.data['detail'] ??
+            "Bu e-posta adresi zaten bir hesaba bağlı. Lütfen farklı bir adres deneyiniz.";
+        throw Exception(errorMessage);
       }
       _handleDioError(e);
       return false;
@@ -84,8 +99,11 @@ class AuthService {
   /// Dio hatalarını merkezi olarak yöneten dahili metod.
   void _handleDioError(DioException e) {
     if (e.response?.statusCode == 403) {
+      // Backend'den gelen "X dakika süreyle kilitlendi" detayını alabilirsek onu göster, yoksa varsayılan metin.
+      final detail = e.response?.data['detail'];
       throw Exception(
-        "Çok fazla hatalı deneme yaptınız. Hesabınız geçici olarak kilitlenmiştir.",
+        detail ??
+            "Çok fazla hatalı deneme yaptınız. Hesabınız geçici olarak kilitlenmiştir.",
       );
     }
     if (e.response?.statusCode == 401) {
@@ -99,6 +117,11 @@ class AuthService {
         "Sunucuya bağlanırken bir sorun oluştu. İnternetinizi kontrol ediniz.",
       );
     }
-    throw Exception("İşlem sırasında beklenmedik bir hata oluştu.");
+
+    // Bilinmeyen hatalar için backend detayını göstermeye çalış
+    final fallbackDetail =
+        e.response?.data?['detail'] ??
+        "İşlem sırasında beklenmedik bir hata oluştu.";
+    throw Exception(fallbackDetail.toString());
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/gestures.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
 import 'package:istfix_app/features/auth/login_view.dart';
+import 'package:istfix_app/features/auth/kvkk_view.dart';
 import 'package:istfix_app/services/auth_service.dart';
 
 /// Yeni kullanıcı kaydı ve şifre kriterlerinin denetlendiği görünüm sınıfı.
@@ -25,6 +27,7 @@ class _RegisterViewState extends State<RegisterView> {
   // Arayüz durum değişkenleri
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _isKvkkAccepted = false;
 
   // Şifre doğrulama durumları
   bool _hasMinLength = false;
@@ -70,9 +73,12 @@ class _RegisterViewState extends State<RegisterView> {
 
   /// Kayıt bilgilerini doğrular ve sisteme iletir.
   Future<void> _handleRegister() async {
-    if (!(_hasMinLength && _hasUpperAndNumber && _passwordsMatch)) {
+    if (!(_hasMinLength &&
+        _hasUpperAndNumber &&
+        _passwordsMatch &&
+        _isKvkkAccepted)) {
       _showErrorDialog(
-        "Lütfen şifre kriterlerini karşıladığınızdan emin olun.",
+        "Lütfen tüm kriterleri ve KVKK onayını sağladığınızdan emin olun.",
       );
       return;
     }
@@ -133,6 +139,12 @@ class _RegisterViewState extends State<RegisterView> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isFormValid =
+        _hasMinLength &&
+        _hasUpperAndNumber &&
+        _passwordsMatch &&
+        _isKvkkAccepted;
+
     return Scaffold(
       backgroundColor: AppColors.arkaplan,
       body: SafeArea(
@@ -153,32 +165,33 @@ class _RegisterViewState extends State<RegisterView> {
                           "Kayıt Ol",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: AppColors.bogazGecesi,
                           ),
                         ),
-                        const SizedBox(height: 30),
+
+                        const SizedBox(height: 32),
 
                         _buildInputLabel("Ad"),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _buildTextField(
                           controller: _firstNameController,
                           hintText: "Adınızı girin",
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
 
                         _buildInputLabel("E-posta Adresi"),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _buildTextField(
                           controller: _emailController,
                           hintText: "E-posta adresinizi girin",
                           keyboardType: TextInputType.emailAddress,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
 
                         _buildInputLabel("Şifre"),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _buildTextField(
                           controller: _passwordController,
                           hintText: "********",
@@ -189,9 +202,9 @@ class _RegisterViewState extends State<RegisterView> {
                             () => _isPasswordVisible = !_isPasswordVisible,
                           ),
                         ),
-                        const SizedBox(height: 12),
 
                         // Dinamik doğrulama maddeleri
+                        const SizedBox(height: 4),
                         _buildValidationItem("En az 8 karakter", _hasMinLength),
                         _buildValidationItem(
                           "En az 1 büyük harf ve 1 rakam",
@@ -201,11 +214,10 @@ class _RegisterViewState extends State<RegisterView> {
                           "Şifreler eşleşiyor",
                           _passwordsMatch,
                         ),
-
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
 
                         _buildInputLabel("Şifre Tekrar"),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         _buildTextField(
                           controller: _confirmPasswordController,
                           hintText: "********",
@@ -213,7 +225,10 @@ class _RegisterViewState extends State<RegisterView> {
                           isPasswordVisible: false,
                           showEyeIcon: false,
                         ),
-                        const SizedBox(height: 30),
+
+                        const SizedBox(height: 12),
+                        _buildKvkkCheckbox(),
+                        const SizedBox(height: 16),
 
                         _isLoading
                             ? const Center(
@@ -221,36 +236,46 @@ class _RegisterViewState extends State<RegisterView> {
                                   color: AppColors.bogazGecesi,
                                 ),
                               )
-                            : ElevatedButton(
-                                onPressed: _handleRegister,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.bogazGecesi,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
+                            : SizedBox(
+                                height: 46,
+                                child: ElevatedButton(
+                                  onPressed: isFormValid
+                                      ? _handleRegister
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.bogazGecesi,
+                                    disabledBackgroundColor: AppColors
+                                        .bogazGecesi
+                                        .withOpacity(0.5),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 0,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: const Text(
-                                  "Kayıt OL",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                  child: Text(
+                                    "Kayıt OL",
+                                    style: TextStyle(
+                                      color: isFormValid
+                                          ? Colors.white
+                                          : Colors.white.withOpacity(0.6),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
-                        const SizedBox(height: 20),
 
+                        const SizedBox(height: 12),
                         // Giriş sayfasına geçiş alanı (Link stili)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
                               "Zaten hesabın var mı? ",
-                              style: TextStyle(color: AppColors.bogazGecesi),
+                              style: TextStyle(
+                                color: AppColors.bogazGecesi,
+                                fontSize: 13,
+                              ),
                             ),
                             GestureDetector(
                               onTap: _navigateToLogin,
@@ -258,6 +283,7 @@ class _RegisterViewState extends State<RegisterView> {
                                 "Giriş Yap",
                                 style: TextStyle(
                                   color: AppColors.halicAcigi,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
                                   decorationColor: AppColors.halicAcigi,
@@ -267,12 +293,9 @@ class _RegisterViewState extends State<RegisterView> {
                           ],
                         ),
 
-                        const SizedBox(
-                          height: 60,
-                        ), // Link ile logo arası minimum güvenli boşluk
-                        const Spacer(), // Logoyu en alta iter
+                        const Spacer(),
                         _buildBrandLogo(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -282,6 +305,57 @@ class _RegisterViewState extends State<RegisterView> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildKvkkCheckbox() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          height: 20,
+          width: 20,
+          child: Checkbox(
+            value: _isKvkkAccepted,
+            activeColor: AppColors.bogazGecesi,
+            onChanged: (bool? value) {
+              setState(() => _isKvkkAccepted = value ?? false);
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.bogazGecesi,
+                height: 1.2,
+              ),
+              children: [
+                TextSpan(
+                  text: "KVKK Aydınlatma Metni",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                    color: AppColors.halicAcigi,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const KvkkView(),
+                        ),
+                      );
+                    },
+                ),
+                const TextSpan(text: "’ni okudum ve kabul ediyorum."),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -310,14 +384,13 @@ class _RegisterViewState extends State<RegisterView> {
     final Color color = isValid
         ? AppColors.halicAcigi
         : AppColors.halicAcigi.withOpacity(0.4);
-
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.only(bottom: 2.0),
       child: Row(
         children: [
-          Icon(Icons.check_circle, color: color, size: 16),
-          const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: color, fontSize: 13)),
+          Icon(Icons.check_circle, color: color, size: 12),
+          const SizedBox(width: 6),
+          Text(text, style: TextStyle(color: color, fontSize: 11)),
         ],
       ),
     );
@@ -327,9 +400,9 @@ class _RegisterViewState extends State<RegisterView> {
     return Text(
       label,
       style: const TextStyle(
-        fontSize: 14,
+        fontSize: 12,
         color: AppColors.bogazGecesi,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
@@ -344,6 +417,7 @@ class _RegisterViewState extends State<RegisterView> {
     VoidCallback? onVisibilityToggle,
   }) {
     return Container(
+      height: 44,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -352,24 +426,33 @@ class _RegisterViewState extends State<RegisterView> {
           width: 1.2,
         ),
       ),
+      alignment: Alignment.center,
       child: TextField(
         controller: controller,
         obscureText: isPassword && !isPasswordVisible,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.bogazGecesi, fontSize: 16),
+        style: const TextStyle(color: AppColors.bogazGecesi, fontSize: 14),
         decoration: InputDecoration(
+          isDense: true,
           hintText: hintText,
-          hintStyle: TextStyle(color: AppColors.bogazGecesi.withOpacity(0.5)),
+          hintStyle: TextStyle(
+            color: AppColors.bogazGecesi.withOpacity(0.5),
+            fontSize: 14,
+          ),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
+            horizontal: 12,
+            vertical: 10,
           ),
           border: InputBorder.none,
+          suffixIconConstraints: const BoxConstraints(
+            minHeight: 24,
+            minWidth: 40,
+          ),
           suffixIcon: (isPassword && showEyeIcon)
               ? GestureDetector(
                   onTap: onVisibilityToggle,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.only(right: 12.0),
                     child: SvgPicture.asset(
                       isPasswordVisible
                           ? 'assets/icons/ic_eye_show.svg'
@@ -378,7 +461,7 @@ class _RegisterViewState extends State<RegisterView> {
                         AppColors.bogazGecesi,
                         BlendMode.srcIn,
                       ),
-                      width: 24,
+                      width: 20,
                     ),
                   ),
                 )

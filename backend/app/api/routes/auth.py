@@ -27,13 +27,15 @@ def register(citizen: CitizenCreate, db: Session = Depends(get_db)):
             detail="Bu email adresi zaten kayıtlı."
         )
     
-    # 2. Şifreyi şifrele ve veritabanına kaydet
+    # 2. Şifreyi şifrele ve veritabanına kaydet (KVKK verilerini de ekliyoruz)
     hashed_pw = get_password_hash(citizen.password)
     
     new_citizen = Citizen(
         name=citizen.name,
         emailAddress=citizen.emailAddress, 
-        passwordHash=hashed_pw
+        passwordHash=hashed_pw,
+        kvkkAccepted=citizen.kvkkAccepted, # Pydantic zaten True olduğunu doğruladı
+        kvkkAcceptedAt=datetime.utcnow() 
     )
     
     try:

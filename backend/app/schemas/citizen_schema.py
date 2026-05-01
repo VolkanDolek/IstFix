@@ -1,5 +1,5 @@
 # backend/app/schemas/citizen_schema.py
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 from uuid import UUID
 from datetime import datetime
 
@@ -8,6 +8,15 @@ class CitizenCreate(BaseModel):
     name: str
     emailAddress: EmailStr
     password: str
+    kvkkAccepted: bool
+
+    # Pydantic V2 yapısına uygun doğrulama: True olmak zorunda
+    @field_validator('kvkkAccepted')
+    @classmethod
+    def check_kvkk(cls, v):
+        if not v:
+            raise ValueError("Kayıt olabilmek için KVKK Aydınlatma Metni'ni onaylamanız gerekmektedir.")
+        return v
 
 # API'den Flutter'a Dönecek Veri (Çıkış - Şifre Yok!)
 class CitizenResponse(BaseModel):
