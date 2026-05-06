@@ -13,6 +13,13 @@ class AppColors {
   // Kategori Renkleri
   static const Color yol = Color(0xFFE74C3C);
   static const Color aydinlatma = Color(0xFFF1C40F);
-  static const Color su = Color(0x3498DB);
+  static const Color su = Color(0xFF3498DB);
   static const Color atik = Color(0xFF14EB00);
+  static const Color diger = Color(0xFFE67E22);
+
+  // Durum (Status) Renkleri - Raporlama durum göstergelerinde
+  static const Color durumIletildi = Color(0xFF2EBA1F);
+  static const Color durumIletilemedi = Color(0xFFEA4335);
+  static const Color durumBekliyor = Color(0xFFF39C12);
+  static const Color durumCozuldu = Color(0xFF9B59B6);
 }

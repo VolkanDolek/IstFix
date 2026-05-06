@@ -132,7 +132,7 @@ async def create_report(
     new_report = Report(
         CITIZENId=current_user.id,
         MUNICIPALITYId=target_municipality_id, # Tespit edilen belediye ID 
-        photoUrl=original_path, # DB'de orijinal yol kalsın
+        photoUrl=f"uploads/{original_file_name}", # DB'de orijinal yol kalsın
         latitude=latitude,
         longitude=longitude,
         writtenDescription=final_description,
@@ -227,6 +227,33 @@ def get_reports(
         reports = db.query(Report).filter(Report.CITIZENId == current_user.id).all()
     
     return reports
+
+@router.get("/{report_id}", response_model=ReportResponse)
+def get_report_detail(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: Citizen = Depends(get_current_user)
+):
+    """
+    Belirli bir raporun detaylarını ID'sine göre getirir.
+    Kullanıcılar sadece kendi raporlarını, adminler ise tüm raporları görebilir.
+    """
+    
+    # Veritabanında raporu ID'ye göre ara
+    report = db.query(Report).filter(Report.id == report_id).first()
+    
+    # Rapor veritabanında yoksa 404 dön
+    if not report:
+        raise HTTPException(status_code=404, detail="Rapor bulunamadı.")
+        
+    # Yetki kontrolü: Kullanıcı admin değilse ve rapor ona ait değilse erişimi engelle (403 Forbidden)
+    if not current_user.isAdmin and report.CITIZENId != current_user.id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bu raporun detaylarını görüntüleme yetkiniz yok."
+        )
+        
+    return report
 
 @router.patch("/{report_id}/status", response_model=ReportResponse)
 def update_report_status(

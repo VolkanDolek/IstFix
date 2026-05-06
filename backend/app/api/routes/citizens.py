@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.citizen import Citizen
-from app.schemas.citizen_schema import ForgotPasswordRequest, ResetPasswordConfirm, ChangePasswordRequest
+from app.schemas.citizen_schema import ForgotPasswordRequest, ResetPasswordConfirm, ChangePasswordRequest, VerifyCodeRequest
 from app.api.deps import get_current_user
 from app.core.security import get_password_hash, verify_password
 from app.services.mail_service import send_otp_email
@@ -124,3 +124,23 @@ def change_password(
         )
     
     return {"message": "Şifreniz başarıyla güncellendi."}
+
+# --- ARA AKIŞ: KOD DOĞRULAMA KONTROLÜ ---
+@router.post("/verify-reset-code")
+def verify_reset_code(data: VerifyCodeRequest, db: Session = Depends(get_db)):
+    """Sadece kodun doğru olup olmadığını kontrol eder, şifreyi değiştirmez."""
+    user = db.query(Citizen).filter(Citizen.emailAddress == data.email).first()
+    
+    if not user or user.resetCode != data.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Girdiğiniz doğrulama kodu hatalı."
+        )
+
+    if datetime.utcnow() > user.resetCodeExpiresAt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Kodun süresi dolmuş. Lütfen tekrar kod isteyin."
+        )
+
+    return {"message": "Kod başarıyla doğrulandı."}

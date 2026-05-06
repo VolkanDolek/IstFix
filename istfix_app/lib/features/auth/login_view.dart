@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
 import 'package:istfix_app/features/auth/register_view.dart';
+import 'package:istfix_app/features/auth/forgot_password_email_view.dart';
+import 'package:istfix_app/features/main/main_tab_view.dart';
 import 'package:istfix_app/services/auth_service.dart';
 
 /// Kullanıcı kimlik doğrulama süreçlerini yöneten görünüm katmanı.
@@ -46,7 +48,12 @@ class _LoginViewState extends State<LoginView> {
             backgroundColor: Colors.green,
           ),
         );
-        // Ana sayfa yönlendirmesi buraya eklenecek.
+        // Ana sayfa yönlendirmesi
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainTabView()),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) _showErrorDialog(e.toString().replaceAll("Exception: ", ""));
@@ -140,7 +147,16 @@ class _LoginViewState extends State<LoginView> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: GestureDetector(
-                            onTap: () {},
+                            onTap: () {
+                              // Unutulan şifre akışını başlatır
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordEmailView(),
+                                ),
+                              );
+                            },
                             child: const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8.0),
                               child: Text(

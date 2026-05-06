@@ -31,7 +31,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         String token = response.data['access_token'];
-        await _storage.write(key: "jwt_token", value: token);
+        await _storage.write(key: "access_token", value: token);
         return true;
       }
       return false;
@@ -77,7 +77,7 @@ class AuthService {
   /// Mevcut oturumu sonlandırır ve yerel verileri temizler.
   Future<void> logout() async {
     try {
-      final token = await _storage.read(key: "jwt_token");
+      final token = await _storage.read(key: "access_token");
       if (token != null) {
         await _dio.post(
           "/auth/logout",
@@ -87,14 +87,90 @@ class AuthService {
     } catch (_) {
       // Sunucu tarafında hata olsa bile yerel temizliğe devam edilir.
     } finally {
-      await _storage.delete(key: "jwt_token");
+      await _storage.delete(key: "access_token");
+    }
+  }
+
+  /// Kullanıcıya e-posta üzerinden 4 haneli şifre sıfırlama kodu gönderir.
+  Future<bool> forgotPassword(String email) async {
+    try {
+      final response = await _dio.post(
+        "/citizens/forgot-password",
+        data: {"email": email},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data['detail'] ?? "Mail gönderilirken bir sorun oluştu.";
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Girilen 4 haneli kodun doğruluğunu teyit eder.
+  Future<bool> verifyResetCode(String email, String code) async {
+    try {
+      final response = await _dio.post(
+        "/citizens/verify-reset-code",
+        data: {"email": email, "code": code},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      String errorMessage =
+          "Girdiğiniz doğrulama kodu hatalı veya süresi dolmuş.";
+
+      if (e.response?.data != null && e.response?.data['detail'] is String) {
+        errorMessage = e.response?.data['detail'];
+      }
+
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Gelen 4 haneli kod ile kullanıcının şifresini sıfırlar.
+  Future<bool> resetPassword(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
+    try {
+      final response = await _dio.post(
+        "/citizens/reset-password",
+        data: {"email": email, "code": code, "newPassword": newPassword},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data['detail'] ?? "Şifre sıfırlanırken bir sorun oluştu.";
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Profil içerisinden mevcut şifreyi doğrulayarak şifre değişikliği yapar.
+  Future<bool> changePassword(String oldPassword, String newPassword) async {
+    try {
+      final token = await _storage.read(key: "access_token");
+      if (token == null) {
+        throw Exception("Oturum süreniz dolmuş, lütfen tekrar giriş yapın.");
+      }
+
+      final response = await _dio.patch(
+        "/citizens/change-password",
+        data: {"oldPassword": oldPassword, "newPassword": newPassword},
+        options: Options(headers: {"Authorization": "Bearer $token"}),
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data['detail'] ??
+          "Şifre güncellenirken bir sorun oluştu.";
+      throw Exception(errorMessage);
     }
   }
 
   /// Oturum durumunu ve token varlığını kontrol eden yardımcı metodlar.
   Future<bool> isLoggedIn() async =>
-      await _storage.read(key: "jwt_token") != null;
-  Future<String?> getToken() async => await _storage.read(key: "jwt_token");
+      await _storage.read(key: "access_token") != null;
+  Future<String?> getToken() async => await _storage.read(key: "access_token");
 
   /// Dio hatalarını merkezi olarak yöneten dahili metod.
   void _handleDioError(DioException e) {

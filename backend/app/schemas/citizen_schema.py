@@ -32,11 +32,16 @@ class CitizenResponse(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
-# 2. Şifre Sıfırlama - Kod ve Yeni Şifre
+# 2a. Şifre Sıfırlama - Kod ve Yeni Şifre
 class ResetPasswordConfirm(BaseModel):
     email: EmailStr
     code: str
     newPassword: str
+
+# 2b. Şifre Sıfırlama - Kod Doğrulama (Yeni Şifre Yok, Sadece Kod Doğrulama)
+class VerifyCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
 
 # 3. Profil İçinden Direkt Değiştirme (Eski Şifre Şart!)
 class ChangePasswordRequest(BaseModel):

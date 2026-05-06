@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
 import 'package:istfix_app/features/auth/login_view.dart';
 import 'package:istfix_app/features/auth/kvkk_view.dart';
+import 'package:istfix_app/features/main/main_tab_view.dart';
 import 'package:istfix_app/services/auth_service.dart';
 
 /// Yeni kullanıcı kaydı ve şifre kriterlerinin denetlendiği görünüm sınıfı.
@@ -95,10 +96,33 @@ class _RegisterViewState extends State<RegisterView> {
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Hesabınız başarıyla oluşturuldu.")),
+        // Kayıt başarılıysa önce giriş işlemi yapıp token alınır.
+        final loginSuccess = await _authService.login(
+          _emailController.text.trim(),
+          _passwordController.text,
         );
-        _navigateToLogin();
+
+        if (!mounted) return;
+
+        if (loginSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Hesabınız başarıyla oluşturuldu ve giriş yapıldı.",
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Tüm geçmişi temizleyip ana sekmelere (MainTabView) yönlendir
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const MainTabView()),
+            (route) => false,
+          );
+        } else {
+          _navigateToLogin();
+        }
       }
     } catch (e) {
       _showErrorDialog(e.toString().replaceAll("Exception: ", ""));

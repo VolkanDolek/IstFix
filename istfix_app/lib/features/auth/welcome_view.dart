@@ -35,7 +35,7 @@ class WelcomeView extends StatelessWidget {
                 ),
               ),
 
-              // Spacer yerine sabit boşluk kullanılarak butonlar merkeze yaklaştırıldı.
+              // Sabit boşluk kullanılarak butonlar merkeze yaklaştırıldı.
               const SizedBox(height: 48),
 
               /// Giriş ve Kayıt aksiyon butonları.
