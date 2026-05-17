@@ -21,5 +21,14 @@ class AppColors {
   static const Color durumIletildi = Color(0xFF2EBA1F);
   static const Color durumIletilemedi = Color(0xFFEA4335);
   static const Color durumBekliyor = Color(0xFFF39C12);
+  static const Color durumDevamEdiyor = Color(0xFF00ACC1);
   static const Color durumCozuldu = Color(0xFF9B59B6);
+
+  // Donanım ve Bağlantı Bildirim Renkleri
+  static const Color baglantiHata =
+      durumIletilemedi; // Kırmızı - Bağlantı Kesildi
+  static const Color baglantiUyari =
+      durumBekliyor; // Turuncu - Bağlantı Aranıyor
+  static const Color baglantiBasari =
+      durumIletildi; // Yeşil - Bağlantı Sağlandı
 }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
@@ -126,7 +127,15 @@ class _ReportDraftViewState extends State<ReportDraftView> {
       // --- 1. BAŞARILI GÖNDERİM SENARYOSU ---
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          // pushReplacement kullanıyoruz ki kullanıcı geri tuşuna basıp tekrar form sayfasına dönemesin
+          // response.body'i JSON'a çeviriyoruz
+          final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+          // Kalan mantık tamamen aynı
+          final String detectedCategory =
+              responseData['classification']?['categoryLabel'] ??
+              responseData['writtenDescription'] ??
+              "Bilinmeyen Sorun";
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -135,8 +144,7 @@ class _ReportDraftViewState extends State<ReportDraftView> {
                 title: "Şikayetiniz gönderildi!",
                 message:
                     "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
-                // TODO: İleride bu kategoriyi FastAPI'den (response.body) gelen cevaba göre dinamikleştir
-                category: "... Sorunu",
+                category: detectedCategory,
               ),
             ),
           );

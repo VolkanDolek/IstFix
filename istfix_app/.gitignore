@@ -73,3 +73,6 @@ windows/
 # İşletim Sistemi Geçici Dosyaları
 .DS_Store
 Thumbs.db
+
+# DevTools settings
+devtools_options.yaml

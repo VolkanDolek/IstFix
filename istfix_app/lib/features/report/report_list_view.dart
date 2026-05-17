@@ -12,6 +12,9 @@ class ReportListItem {
   final String id;
   final String categoryName;
   final String dateStr;
+
+  /// Tarihe göre (Eskiden yeniye / Yeniden eskiye) sıralama yapabilmek için eklenen ham tarih nesnesi.
+  final DateTime rawDate;
   final String municipalityName;
   final String status;
   final Color baseColor;
@@ -21,6 +24,7 @@ class ReportListItem {
     required this.id,
     required this.categoryName,
     required this.dateStr,
+    required this.rawDate,
     required this.municipalityName,
     required this.status,
     required this.baseColor,
@@ -43,8 +47,25 @@ class _ReportListViewState extends State<ReportListView> {
   // Arayüzde listelenecek raporların tutulduğu koleksiyon
   List<ReportListItem> _reports = [];
 
+  // Kullanıcının seçtiği filtrelere göre ekranda gösterilecek aktif koleksiyon
+  List<ReportListItem> _filteredReports = [];
+
   // Veri çekme işlemi sırasındaki bekleme durumunu kontrol eder
   bool _isLoading = true;
+
+  // --- Filtreleme ve Sıralama Durumları (State) ---
+  String _selectedCategory = "Tümü"; // Aktif kategori filtresi
+  bool _sortDescending = true; // true: Yeniden Eskiye, false: Eskiden Yeniye
+
+  // Uygulamada gösterilecek filtreleme kategorileri
+  final List<String> _filterCategories = [
+    "Tümü",
+    "Yol",
+    "Su",
+    "Atık",
+    "Aydınlatma",
+    "Diğer",
+  ];
 
   @override
   void initState() {
@@ -91,17 +112,20 @@ class _ReportListViewState extends State<ReportListView> {
 
   /// Gelen kategori ismini analiz ederek, tasarım standartlarına uygun renk ve SVG ikon yolunu belirler.
   Map<String, dynamic> _getCategoryStyles(String category) {
-    if (category.contains('Yol Sorunu')) {
+    final String cat = category.toLowerCase();
+    if (cat.contains('yol')) {
       return {'color': AppColors.yol, 'iconPath': 'assets/icons/ic_road.svg'};
-    } else if (category.contains('Su Sorunu')) {
+    } else if (cat.contains('su')) {
       return {
         'color': AppColors.su,
         'iconPath': 'assets/icons/ic_water_drop.svg',
       };
-    } else if (category.contains('Çevre Kirliliği') ||
-        category.contains('Atık')) {
+    } else if (cat.contains('çevre') ||
+        cat.contains('cevre') ||
+        cat.contains('atık') ||
+        cat.contains('atik')) {
       return {'color': AppColors.atik, 'iconPath': 'assets/icons/ic_trash.svg'};
-    } else if (category.contains('Aydınlatma Sorunu')) {
+    } else if (cat.contains('aydınlatma') || cat.contains('aydinlatma')) {
       return {
         'color': AppColors.aydinlatma,
         'iconPath': 'assets/icons/ic_lightbulb.svg',
@@ -112,6 +136,47 @@ class _ReportListViewState extends State<ReportListView> {
       'color': AppColors.diger,
       'iconPath': 'assets/icons/ic_settings.svg',
     };
+  }
+
+  /// Kullanıcının seçtiği kategoriye ve sıralama yönüne göre ana listeyi filtreler.
+  void _applyFilters() {
+    List<ReportListItem> result = List.from(_reports);
+
+    // 1. Kategori Bazlı Filtreleme
+    if (_selectedCategory != "Tümü") {
+      result = result.where((r) {
+        final String cat = r.categoryName.toLowerCase();
+        final String search = _selectedCategory.toLowerCase();
+
+        // "Atık" filtresi seçildiğinde hem atık hem çevre etiketli
+        // ve Türkçe/İngilizce karakter varyasyonlu raporları getirir.
+        if (search == "atık" || search == "atik") {
+          return cat.contains("çevre") ||
+              cat.contains("cevre") ||
+              cat.contains("atık") ||
+              cat.contains("atik");
+        }
+        // Türkçe karakter (ı/i) varyasyonları için Aydınlatma kalkanı
+        if (search == "aydınlatma" || search == "aydinlatma") {
+          return cat.contains("aydınlatma") || cat.contains("aydinlatma");
+        }
+
+        return cat.contains(search);
+      }).toList();
+    }
+
+    // 2. Zaman Damgasına (Timestamp) Göre Sıralama
+    result.sort((a, b) {
+      if (_sortDescending) {
+        return b.rawDate.compareTo(a.rawDate); // En güncel kayıtlar en üstte
+      } else {
+        return a.rawDate.compareTo(b.rawDate); // En eski kayıtlar en üstte
+      }
+    });
+
+    setState(() {
+      _filteredReports = result;
+    });
   }
 
   /// Kullanıcının oluşturduğu raporları güvenli bir şekilde backend üzerinden çeker ve durumu günceller.
@@ -142,18 +207,30 @@ class _ReportListViewState extends State<ReportListView> {
           final styles = _getCategoryStyles(catName);
           String muniName = item['municipality']?['name'] ?? "Belirleniyor...";
 
+          // Sıralama algoritmasının kullanabilmesi için tarih verisi DateTime nesnesine dönüştürülür
+          DateTime parsedDate =
+              DateTime.tryParse(item['submissionTimestamp'] ?? "") ??
+              DateTime.now();
+
           return ReportListItem(
             id: item['id'].toString(),
             categoryName: catName,
-            dateStr: _formatDate(item['submissionTimestamp']),
+            dateStr: _formatDate(item['submissionTimestamp'] ?? ""),
+            rawDate: parsedDate,
             municipalityName: muniName,
-            status: item['processingStatus'],
+            status: item['processingStatus'] ?? "Pending",
             baseColor: styles['color'],
             iconPath: styles['iconPath'],
           );
         }).toList();
 
-        if (mounted) setState(() => _reports = fetchedReports);
+        if (mounted) {
+          setState(() {
+            _reports = fetchedReports;
+          });
+          // Veriler başarıyla çekildikten sonra varsayılan filtrelemeyi uygula
+          _applyFilters();
+        }
       } else {
         if (mounted) setState(() => _reports = []);
       }
@@ -191,23 +268,151 @@ class _ReportListViewState extends State<ReportListView> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.bogazGecesi),
-            )
-          : _reports.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: _reports.length,
-              itemBuilder: (context, index) =>
-                  _buildReportCard(_reports[index]),
-            ),
+      body: Column(
+        children: [
+          // Rapor listesi boş değilse üst filtreleme alanını göster
+          if (!_isLoading && _reports.isNotEmpty) _buildFilterBar(),
+
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.bogazGecesi,
+                    ),
+                  )
+                : _reports.isEmpty
+                ? _buildEmptyState(
+                    "Daha önce gönderilmiş raporunuz bulunmamaktadır.",
+                  )
+                : _filteredReports.isEmpty
+                ? _buildEmptyState("Seçilen kategoriye uygun rapor bulunamadı.")
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 20,
+                    ),
+                    itemCount: _filteredReports.length,
+                    itemBuilder: (context, index) =>
+                        _buildReportCard(_filteredReports[index]),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
-  /// İhbar listesi boş olduğunda (kullanıcının hiç raporu yoksa) gösterilen estetik boş durum (Empty State) arayüzü.
-  Widget _buildEmptyState() {
+  /// Kullanıcıya yatay düzlemde kaydırılabilir filtreleme seçenekleri (Choice Chips) sunar.
+  Widget _buildFilterBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Tarih Sıralama Butonu (Toggle)
+          Tooltip(
+            message: _sortDescending ? "Yeniden Eskiye" : "Eskiden Yeniye",
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _sortDescending = !_sortDescending;
+                  _applyFilters();
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.arkaplan,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _sortDescending
+                          ? Icons.arrow_downward
+                          : Icons.arrow_upward,
+                      size: 16,
+                      color: AppColors.bogazGecesi,
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.bogazGecesi,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Kategoriler için yatay kaydırılabilir seçim alanı
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _filterCategories.map((category) {
+                  final bool isSelected = _selectedCategory == category;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(category),
+                      selected: isSelected,
+                      checkmarkColor: Colors.white,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                            _applyFilters();
+                          });
+                        }
+                      },
+                      selectedColor: AppColors.bogazGecesi,
+                      backgroundColor: AppColors.arkaplan,
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.bogazGecesi,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontSize: 13,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 0,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppColors.bogazGecesi
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// İhbar listesi boş olduğunda (kullanıcının hiç raporu yoksa veya filtre sonucu boşsa) gösterilen boş durum (Empty State) arayüzü.
+  Widget _buildEmptyState(String message) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -222,14 +427,17 @@ class _ReportListViewState extends State<ReportListView> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            "Daha önce gönderilmiş raporunuz bulunmamaktadır.",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.3,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+              ),
             ),
           ),
         ],
@@ -251,7 +459,14 @@ class _ReportListViewState extends State<ReportListView> {
         safeStatus.contains("i̇letildi")) {
       displayStatus = "İletildi";
       statusColor = AppColors.durumIletildi;
+    } else if (safeStatus == "inprogress" ||
+        safeStatus == "in_progress" ||
+        safeStatus.contains("işleme") ||
+        safeStatus.contains("isleme")) {
+      displayStatus = "İşleme Alındı";
+      statusColor = AppColors.durumDevamEdiyor;
     } else if (safeStatus == "emaildispatchfailed" ||
+        safeStatus == "rejected" ||
         safeStatus.contains("iletilemedi") ||
         safeStatus.contains("i̇letilemedi")) {
       displayStatus = "İletilemedi";

@@ -346,7 +346,16 @@ class _ReportDetailViewState extends State<ReportDetailView> {
       textColor = AppColors.durumIletildi;
       iconPath = 'assets/icons/ic_check_circle.svg';
       message = "E-posta başarıyla iletildi.";
+    } else if (safeStatus == "inprogress" ||
+        safeStatus == "in_progress" ||
+        safeStatus.contains("işleme") ||
+        safeStatus.contains("isleme")) {
+      bgColor = AppColors.durumDevamEdiyor.withOpacity(0.2);
+      textColor = AppColors.durumDevamEdiyor;
+      iconPath = 'assets/icons/ic_progress_circle.svg';
+      message = "Raporunuz işleme alındı, süreç devam ediyor.";
     } else if (safeStatus == "emaildispatchfailed" ||
+        safeStatus == "rejected" ||
         safeStatus.contains("iletilemedi") ||
         safeStatus.contains("i̇letilemedi")) {
       bgColor = AppColors.durumIletilemedi.withOpacity(0.2);

@@ -4,6 +4,7 @@ import 'package:istfix_app/core/constants/color_constants.dart';
 import 'package:istfix_app/features/auth/register_view.dart';
 import 'package:istfix_app/features/auth/forgot_password_email_view.dart';
 import 'package:istfix_app/features/main/main_tab_view.dart';
+import 'package:istfix_app/features/admin/admin_main_tab_view.dart';
 import 'package:istfix_app/services/auth_service.dart';
 
 /// Kullanıcı kimlik doğrulama süreçlerini yöneten görünüm katmanı.
@@ -23,6 +24,7 @@ class _LoginViewState extends State<LoginView> {
   // Durum değişkenleri
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _rememberMe = false;
 
   /// Mevcut kullanıcı bilgilerini sisteme gönderir ve doğrular.
   Future<void> _handleLogin() async {
@@ -37,23 +39,34 @@ class _LoginViewState extends State<LoginView> {
     setState(() => _isLoading = true);
 
     try {
-      final success = await _authService.login(email, password);
+      final success = await _authService.login(
+        email,
+        password,
+        rememberMe: _rememberMe,
+      );
 
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Giriş başarılı! Hoş geldiniz."),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Ana sayfa yönlendirmesi
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainTabView()),
-          (route) => false,
-        );
+        // --- ROL TABANLI YÖNLENDİRME (RBAC) ---
+        // Servisten kullanıcının yetki (isAdmin) durumunu asenkron olarak kontrol ediyoruz.
+        final bool isAdmin = await _authService.checkIsAdmin();
+
+        if (isAdmin) {
+          // Sistem yöneticisi (Admin) ise doğrudan yönetim merkezine (Dashboard) aktarılır.
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminMainTabView()),
+            (route) => false,
+          );
+        } else {
+          // Standart kullanıcı (Citizen) ise uygulamanın ana akışına aktarılır.
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const MainTabView()),
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
       if (mounted) _showErrorDialog(e.toString().replaceAll("Exception: ", ""));
@@ -143,31 +156,68 @@ class _LoginViewState extends State<LoginView> {
                             () => _isPasswordVisible = !_isPasswordVisible,
                           ),
                         ),
-                        // Şifre sıfırlama yönlendirmesi
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () {
-                              // Unutulan şifre akışını başlatır
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ForgotPasswordEmailView(),
+
+                        // Beni Hatırla ve Şifre sıfırlama yönlendirmesi satırı
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _rememberMe,
+                                    activeColor: AppColors.bogazGecesi,
+                                    checkColor: Colors.white,
+                                    side: const BorderSide(
+                                      color: AppColors.bogazGecesi,
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _rememberMe = value ?? false;
+                                      });
+                                    },
+                                  ),
                                 ),
-                              );
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8.0),
-                              child: Text(
-                                "Şifreni mi unuttun ?",
-                                style: TextStyle(
-                                  color: AppColors.halicAcigi,
-                                  fontSize: 12,
+                                const SizedBox(width: 4),
+                                const Text(
+                                  "Beni Hatırla",
+                                  style: TextStyle(
+                                    color: AppColors.bogazGecesi,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                // Unutulan şifre akışını başlatır
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ForgotPasswordEmailView(),
+                                  ),
+                                );
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text(
+                                  "Şifreni mi unuttun ?",
+                                  style: TextStyle(
+                                    color: AppColors.halicAcigi,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
 
                         const SizedBox(height: 8),

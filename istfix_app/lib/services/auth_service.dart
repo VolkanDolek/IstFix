@@ -16,8 +16,13 @@ class AuthService {
 
   final _storage = const FlutterSecureStorage();
 
-  /// Kullanıcı giriş işlemini gerçekleştirir ve JWT token'ı güvenli depolamaya kaydeder.
-  Future<bool> login(String email, String password) async {
+  /// Kullanıcı girişini doğrular ve oturum tercihlerini yönetir.
+  /// [rememberMe] parametresi ile oturumun kalıcı olup olmayacağı belirlenir.
+  Future<bool> login(
+    String email,
+    String password, {
+    bool rememberMe = false,
+  }) async {
     try {
       // FastAPI OAuth2 Login servisi "application/x-www-form-urlencoded" formatı
       // ve "username" alanı beklediği için özel olarak yapılandırıldı.
@@ -31,7 +36,30 @@ class AuthService {
 
       if (response.statusCode == 200) {
         String token = response.data['access_token'];
+
+        // Kimlik doğrulama anahtarını güvenli depolama birimine yazar.
         await _storage.write(key: "access_token", value: token);
+
+        // Kullanıcının "Beni Hatırla" tercihini asenkron okuma için saklar.
+        await _storage.write(key: "remember_me", value: rememberMe.toString());
+
+        // --- KULLANICI ROLÜNÜ ÇEK VE KAYDET ---
+        // Başarılı giriş sonrası, rotalama mimarisini yönetebilmek adına
+        // '/auth/me' endpoint'inden aktif kullanıcının isAdmin durumu çekilir.
+        try {
+          final profileResponse = await _dio.get(
+            "/auth/me",
+            options: Options(headers: {"Authorization": "Bearer $token"}),
+          );
+
+          final bool isAdmin = profileResponse.data['isAdmin'] ?? false;
+          await _storage.write(key: "is_admin", value: isAdmin.toString());
+        } catch (e) {
+          // Ağ hatası veya profilin çekilememesi durumunda,
+          // güvenlik önlemi olarak standart yetki (citizen) atanır.
+          await _storage.write(key: "is_admin", value: "false");
+        }
+
         return true;
       }
       return false;
@@ -39,6 +67,22 @@ class AuthService {
       _handleDioError(e);
       return false; // Hata fırlatılmazsa false dön
     }
+  }
+
+  /// Uygulama açılışında geçerli bir oturumun ve otomatik giriş
+  /// tercihinin olup olmadığını kontrol eder.
+  Future<bool> shouldAutoLogin() async {
+    final token = await _storage.read(key: "access_token");
+    final rememberMe = await _storage.read(key: "remember_me");
+    return token != null && rememberMe == 'true';
+  }
+
+  // --- YETKİ KONTROLÜ ---
+  /// Mevcut oturumdaki kullanıcının yetkili (Admin) olup olmadığını yerel hafızadan okur.
+  /// Bu metod, hem Login hem de Auto-Login sürecinde doğru panellere yönlendirme yapmak için kullanılır.
+  Future<bool> checkIsAdmin() async {
+    final adminStatus = await _storage.read(key: "is_admin");
+    return adminStatus == 'true';
   }
 
   /// Yeni kullanıcı kaydı oluşturur.
@@ -74,7 +118,7 @@ class AuthService {
     }
   }
 
-  /// Mevcut oturumu sonlandırır ve yerel verileri temizler.
+  /// Mevcut oturumu sonlandırır ve tüm güvenlik anahtarları ile kullanıcı tercihlerini temizler.
   Future<void> logout() async {
     try {
       final token = await _storage.read(key: "access_token");
@@ -85,9 +129,13 @@ class AuthService {
         );
       }
     } catch (_) {
-      // Sunucu tarafında hata olsa bile yerel temizliğe devam edilir.
+      // Ağ hatası, sunucu tarafında hata olsa bile yerel temizliğe devam edilir.
     } finally {
+      // Oturum verilerini ve kullanıcı tercihlerini tamamen siler.
       await _storage.delete(key: "access_token");
+      await _storage.delete(key: "remember_me");
+      // Çıkış yaparken admin bilgisini temizler.
+      await _storage.delete(key: "is_admin");
     }
   }
 

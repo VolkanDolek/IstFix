@@ -328,15 +328,6 @@ class _MapViewState extends State<MapView> {
             ),
           ),
 
-          // 3. KATMAN: GPS Kapalıysa Gösterilecek Uyarı Bandı
-          if (!_isGpsEnabled || !_hasPermission)
-            Positioned(
-              top: 70,
-              left: 16,
-              right: 16,
-              child: _buildGpsWarningBanner(),
-            ),
-
           // Veriler Çekilirken Gösterilen Yükleme Animasyonu
           if (_isLoadingReports)
             const Positioned(
@@ -454,50 +445,6 @@ class _MapViewState extends State<MapView> {
           ),
         ),
       ],
-    );
-  }
-
-  /// Konum erişimi sağlanamadığında kullanıcıyı bilgilendiren ve ayarlara yönlendiren panel
-  Widget _buildGpsWarningBanner() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            'assets/icons/ic_warning_circle.svg',
-            width: 24,
-            colorFilter: const ColorFilter.mode(
-              Colors.redAccent,
-              BlendMode.srcIn,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              "Yakınınızdaki kendi ihbarlarınızı tam olarak görmek için konum servisini açmalısınız.",
-              style: TextStyle(fontSize: 12, color: AppColors.bogazGecesi),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Geolocator.openLocationSettings(),
-            child: const Text(
-              "Ayarlar",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

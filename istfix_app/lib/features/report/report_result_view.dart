@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/features/main/main_tab_view.dart';
 
 /// Rapor gönderim işleminden sonra kullanıcıya gösterilen tam sayfa geri bildirim ekranı.
 class ReportResultView extends StatelessWidget {
@@ -98,8 +99,18 @@ class ReportResultView extends StatelessWidget {
               height: 54,
               child: ElevatedButton(
                 onPressed: () {
-                  // Geçmişteki tüm sayfaları temizleyerek en başa (Haritaya) döner
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  // pushAndRemoveUntil ile geçmişteki tüm rota yığınını (stack) temizliyoruz.
+                  // UniqueKey() ataması yaparak Flutter'a MainTabView'i bellekten silip
+                  // sıfırdan ve tertemiz bir şekilde yeniden oluşturması talimatını veriyoruz.
+                  // Bu sayede Map API'ya tekrar istek atar ve yeni pini ekrana çizer.
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MainTabView(key: UniqueKey()),
+                    ),
+                    (route) =>
+                        false, // Arkada kalan tüm sayfaları bellekten temizler
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.bogazGecesi,
