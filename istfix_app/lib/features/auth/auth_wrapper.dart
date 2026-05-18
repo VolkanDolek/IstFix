@@ -1,3 +1,4 @@
+// lib/features/auth/auth_wrapper.dart
 import 'package:flutter/material.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
 import 'package:istfix_app/features/admin/admin_main_tab_view.dart';
@@ -8,14 +9,26 @@ import 'package:istfix_app/services/auth_service.dart';
 /// Uygulamanın ilk açılışında oturum durumunu ve kullanıcı rolünü
 /// denetleyerek doğru arayüze yönlendiren köprü widget.
 class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({super.key});
+  // TEST İÇİN EKLENDİ: Dışarıdan mock servis alabilmek için
+  final AuthService? authService;
+
+  // Constructor güncellendi
+  const AuthWrapper({super.key, this.authService});
 
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  final AuthService _authService = AuthService();
+  // TEST İÇİN EKLENDİ: late anahtar kelimesi ile başlatmayı initState'e devrettik
+  late final AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    // Dışarıdan verilmişse onu kullan (Test), verilmemişse yenisini üret (Canlı)
+    _authService = widget.authService ?? AuthService();
+  }
 
   @override
   Widget build(BuildContext context) {
