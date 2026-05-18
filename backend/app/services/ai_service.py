@@ -14,14 +14,26 @@ yolo_model = YOLO(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
 
 # 3. İŞ KURALLARI (BUSINESS LOGIC) - data.yaml sınıflarını ana kategorilere bağlama
 CLASS_MAPPING = {
+    # Yol Sorunu
     "pothole": "Yol Sorunu (Çukur)",
-    "road-crack": "Yol Sorunu (Asfalt Çatlağı)",
-    "road-mark": "Yol Sorunu (Yol Çizgisi)",
+    
+    # Su Sorunu
     "puddle": "Su Sorunu (Su Birikintisi)",
     "manhole": "Su Sorunu (Rögar Kapağı)",
+    
+    # Çevre Kirliliği
     "garbage": "Çevre Kirliliği (Çöp)",
-    "garbage-bin": "Çevre Kirliliği (Çöp Kutusu)",
-    "street-light": "Aydınlatma Sorunu (Sokak Lambası)"
+    "garbage-bin": "Çevre Kirliliği (Çöp Konteyneri)",
+    
+    # Aydınlatma Sorunu
+    "street-light": "Aydınlatma Sorunu (Sokak Lambası)",
+    
+    # Diğer Sorunlar
+    "bench": "Diğer Sorunlar (Bank)",
+    "cat": "Diğer Sorunlar (Kedi)",
+    "dog": "Diğer Sorunlar (Köpek)",
+    "traffic-light": "Diğer Sorunlar (Trafik Işığı)",
+    "traffic-sign": "Diğer Sorunlar (Trafik Tabelası)"
 }
 
 def analyze_image_with_yolo(image_path: str) -> dict:
@@ -33,7 +45,7 @@ def analyze_image_with_yolo(image_path: str) -> dict:
     # Model yüklenmemişse hata dönmesin, varsayılan bir değer dönsün
     if not yolo_model: 
         print("HATA: ml_models/best.pt bulunamadı!")
-        return {"categoryLabel": "Bilinmeyen Sorun", "confidenceScore": 0.0}
+        return {"categoryLabel": "Bilinmeyen Sorun", "confidenceScore": 0.5}
     
     # YOLO Modelini Çalıştır (Sadece %50 ve üzeri emin olduklarını al)
     results = yolo_model.predict(source=image_path, imgsz=512, conf=0.25)
@@ -42,18 +54,18 @@ def analyze_image_with_yolo(image_path: str) -> dict:
     if len(results[0].boxes) == 0:
         return {"categoryLabel": "Sorun Tespit Edilemedi", "confidenceScore": 0.0}
 
-    # Resimde birden fazla sorun varsa, modelin "en emin olduğu" sorunu buluyoruz
+    # Resimde birden fazla sorun varsa, modelin en emin olduğu sorunu buluyoruz
     boxes = results[0].boxes
     best_box = max(boxes, key=lambda b: float(b.conf[0])) # conf değeri en yüksek olanı al
     
-    # Tespit edilen nesnenin ID'sini, adını ve güven skorunu al
+    # Tespit edilen nesnenin IDsini, adını ve güven skorunu al
     class_id = int(best_box.cls[0].item())
     confidence = float(best_box.conf[0].item())
     
-    # Modelin içindeki İngilizce ismi çek (örn: "pothole")
+    # Modelin içindeki İngilizce ismi çek 
     detected_class_name = results[0].names[class_id] 
     
-    # İngilizce ismi sözlükten geçirip senin istediğin Ana Kategori formatına çevir
+    # İngilizce ismi sözlükten geçirip gerekli formataa çevir
     # (Eğer sözlükte yoksa, İngilizce ismini direkt yazar)
     mapped_category = CLASS_MAPPING.get(detected_class_name, detected_class_name)
 
