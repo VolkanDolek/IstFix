@@ -14,14 +14,26 @@ yolo_model = YOLO(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
 
 # 3. İŞ KURALLARI (BUSINESS LOGIC) - data.yaml sınıflarını ana kategorilere bağlama
 CLASS_MAPPING = {
+    # Yol Sorunu
     "pothole": "Yol Sorunu (Çukur)",
-    "road-crack": "Yol Sorunu (Asfalt Çatlağı)",
-    "road-mark": "Yol Sorunu (Yol Çizgisi)",
+
+    # Su Sorunu
     "puddle": "Su Sorunu (Su Birikintisi)",
     "manhole": "Su Sorunu (Rögar Kapağı)",
+
+    # Çevre Kirliliği
     "garbage": "Çevre Kirliliği (Çöp)",
     "garbage-bin": "Çevre Kirliliği (Çöp Kutusu)",
-    "street-light": "Aydınlatma Sorunu (Sokak Lambası)"
+
+    # Aydınlatma Sorunu
+    "street-light": "Aydınlatma Sorunu (Sokak Lambası)",
+
+    # Diğer Sorunlar
+    "bench": "Diğer Sorunlar (Bank)",
+    "cat": "Diğer Sorunlar (Kedi)",
+    "dog": "Diğer Sorunlar (Köpek)",
+    "traffic-light": "Diğer Sorunlar (Trafik Işığı)",
+    "traffic-sign": "Diğer Sorunlar (Trafik Tabelası)"
 }
 
 def analyze_image_with_yolo(image_path: str) -> dict:

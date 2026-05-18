@@ -1,10 +1,12 @@
 # backend/app/api/routes/citizens.py
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.citizen import Citizen
+from app.models.report import Report
+from app.models.municipality import Municipality
 from app.schemas.citizen_schema import ForgotPasswordRequest, ResetPasswordConfirm, ChangePasswordRequest, VerifyCodeRequest
 from app.api.deps import get_current_user, get_current_admin
 from app.core.security import get_password_hash, verify_password
@@ -26,7 +28,8 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     # 4 haneli rastgele kod oluştur
     code = str(random.randint(1000, 9999))
     user.resetCode = code
-    user.resetCodeExpiresAt = datetime.utcnow() + timedelta(minutes=15)
+    # GÜNCELLEME: utcnow() yerine modern timezone-aware datetime kullanıldı. 
+    user.resetCodeExpiresAt = datetime.now(timezone.utc) + timedelta(minutes=15)
     
     try:
         db.commit()
@@ -74,7 +77,10 @@ def reset_password(data: ResetPasswordConfirm, db: Session = Depends(get_db)):
             detail="Geçersiz kod veya e-posta."
         )
 
-    if datetime.utcnow() > user.resetCodeExpiresAt:
+    # ESKİ: if datetime.utcnow() > user.resetCodeExpiresAt:
+    # GÜNCEL HALİ: veritabanından gelene tzinfo ekleyip kıyaslıyoruz
+    expires_at = user.resetCodeExpiresAt.replace(tzinfo=timezone.utc) if user.resetCodeExpiresAt else None
+    if expires_at and datetime.now(timezone.utc) > expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Kodun süresi dolmuş. Lütfen tekrar kod isteyin."
@@ -137,7 +143,10 @@ def verify_reset_code(data: VerifyCodeRequest, db: Session = Depends(get_db)):
             detail="Girdiğiniz doğrulama kodu hatalı."
         )
 
-    if datetime.utcnow() > user.resetCodeExpiresAt:
+    # ESKİ: if datetime.utcnow() > user.resetCodeExpiresAt:
+    # GÜNCEL HALİ:
+    expires_at = user.resetCodeExpiresAt.replace(tzinfo=timezone.utc) if user.resetCodeExpiresAt else None
+    if expires_at and datetime.now(timezone.utc) > expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Kodun süresi dolmuş. Lütfen tekrar kod isteyin."

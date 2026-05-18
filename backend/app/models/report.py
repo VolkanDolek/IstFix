@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Float, Text, Boolean, DateTime, ForeignKe
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship # İlişkiler için
 from geoalchemy2 import Geometry
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
 
 class Report(Base):
@@ -31,7 +31,8 @@ class Report(Base):
     geom = Column(Geometry(geometry_type='POINT', srid=4326), nullable=True)
 
     # 4. Zaman ve Durum
-    submissionTimestamp = Column(DateTime, default=datetime.utcnow)
+    # GÜNCELLEME: utcnow() yerine modern timezone-aware datetime kullanıldı
+    submissionTimestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     processingStatus = Column(String(20), default="Pending") # Pending, Classifying, vb.
 
     # --- AI Analiz Sonuçlarını Saklayacak Kolonlar ---

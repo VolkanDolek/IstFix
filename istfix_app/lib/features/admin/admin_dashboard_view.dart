@@ -60,7 +60,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
     return status; // Çevirisi yoksa orijinali kalsın
   }
 
-  /// Yapay zeka tarafından belirlenen kategori ismine göre uygun UI rengini döndürür.
+  /// Ml model tarafından belirlenen kategori ismine göre uygun UI rengini döndürür.
   Color _getCategoryColor(String category) {
     final cat = category.toLowerCase();
     if (cat.contains('yol')) return AppColors.yol;
@@ -83,7 +83,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
     super.dispose();
   }
 
-  // --- Çekirdek İşlevler (Core Functions) ---
+  // --- Çekirdek İşlevler ---
 
   /// Raporlar içerisinde 'Rapor ID' veya 'Belediye ID'ye göre metin tabanlı arama yapar.
   void _filterReports(String query) {
@@ -163,7 +163,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
     }
   }
 
-  // --- YENİ: RAPOR SİLME FONKSİYONLARI ---
+  // --- RAPOR SİLME FONKSİYONLARI ---
 
   /// Raporu kalıcı olarak silmek için kullanıcıdan onay ister.
   Future<void> _confirmDeleteReport(String reportId) async {
@@ -482,10 +482,10 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                                   ),
                                   const SizedBox(width: 8),
 
-                                  // --- GÜNCELLENEN KISIM: Buton gibi görünen Sil ve Yönet Row Yapısı ---
+                                  // --- Sil ve Yönet Row Yapısı ---
                                   Row(
                                     children: [
-                                      // Rapor Silme Butonu (Arka planı olan şık Elevated Button)
+                                      // Rapor Silme Butonu
                                       ElevatedButton(
                                         onPressed: () {
                                           if (reportId.isNotEmpty) {
@@ -497,9 +497,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                                           }
                                         },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors
-                                              .red
-                                              .shade500, // Katı kırmızı arka plan
+                                          backgroundColor: Colors.red.shade500,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
                                               8,
@@ -581,7 +579,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
     );
   }
 
-  // --- Yardımcı Widget'lar (Helper Widgets) ---
+  // --- Yardımcı Widget'lar ---
 
   /// Rapor durumlarını (Status) görsel olarak temsil eden dinamik arayüz bileşeni.
   Widget _buildStatusChip(String status) {

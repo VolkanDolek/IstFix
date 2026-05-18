@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import Column, String, Boolean, DateTime, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
 
 class Citizen(Base):
@@ -14,7 +14,9 @@ class Citizen(Base):
     name = Column(String(100), nullable=False)
     emailAddress = Column(String(255), unique=True, index=True, nullable=False)
     passwordHash = Column(String(255), nullable=False)
-    registrationDate = Column(DateTime, default=datetime.utcnow)
+    # GÜNCELLEME: utcnow() yerine modern timezone-aware datetime kullanıldı. 
+    # (lambda kullanarak fonksiyonu referans veriyoruz):
+    registrationDate = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     isActive = Column(Boolean, default=True)
     isAdmin = Column(Boolean, default=False)
 

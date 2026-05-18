@@ -9,7 +9,7 @@ from app.services.token_service import cleanup_expired_tokens
 from app.schemas.citizen_schema import CitizenCreate, CitizenResponse
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.api.deps import get_current_user, get_current_admin, reusable_oauth2
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter()
 
@@ -34,7 +34,7 @@ def register(citizen: CitizenCreate, db: Session = Depends(get_db)):
         emailAddress=citizen.emailAddress, 
         passwordHash=hashed_pw,
         kvkkAccepted=citizen.kvkkAccepted, # Pydantic zaten True olduğunu doğruladı
-        kvkkAcceptedAt=datetime.utcnow() 
+        kvkkAcceptedAt=datetime.now(timezone.utc) # GÜNCELLEME: utcnow() YERİNE timezone-aware datetime kullanıyoruz 
     )
     
     try:
@@ -69,9 +69,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # A. Hesap şu an kilitli mi kontrol et
-    if citizen.lockoutUntil and datetime.utcnow() < citizen.lockoutUntil:
-        kalan_sure = citizen.lockoutUntil - datetime.utcnow()
+    # A. Hesap şu an kilitli mi kontrol et (GÜNCELLENEN KISIM)
+    su_an = datetime.now(timezone.utc)
+    
+    # Veritabanından gelen tarihe güvenlik amacıyla UTC zaman dilimini (tzinfo) ekliyoruz
+    kilit_bitis = citizen.lockoutUntil.replace(tzinfo=timezone.utc) if citizen.lockoutUntil else None
+
+    if kilit_bitis and su_an < kilit_bitis:
+        kalan_sure = kilit_bitis - su_an
         dakika = int(kalan_sure.total_seconds() // 60)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -83,7 +88,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         citizen.failedLoginAttempts += 1
         
         if citizen.failedLoginAttempts >= 5:
-            citizen.lockoutUntil = datetime.utcnow() + timedelta(minutes=15)
+            citizen.lockoutUntil = datetime.now(timezone.utc) + timedelta(minutes=15) # GÜNCELLEME: utcnow() YERİNE timezone-aware datetime kullanıyoruz
             citizen.failedLoginAttempts = 0 # Kilidi vurduğumuz için sayacı sıfırlıyoruz
             try:
                 db.commit()

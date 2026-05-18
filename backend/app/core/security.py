@@ -1,5 +1,5 @@
 # backend/app/core/security.py
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 from jose import jwt
 from passlib.context import CryptContext
@@ -25,7 +25,8 @@ def create_access_token(subject: Union[str, Any]) -> str:
     Giriş yapan kullanıcıya dijital kimlik kartı (JWT) üretir
     Subject kısmında genellikle kullanıcının email adresi veya UUID'si tutulur.
     """
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # GÜNCELLEME: utcnow() yerine modern timezone-aware now() kullanıyoruz
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     # Token içeriği (Payload)
     to_encode = {
