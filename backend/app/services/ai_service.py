@@ -8,39 +8,80 @@ from app.core.config import settings
 client = Client(api_key=settings.GEMINI_API_KEY)
 
 # 2. YOLOv8 Modelini Yükle 
-# (İleride 'best.pt' dosyasını ml_models klasörüne koyduğumuzda burası aktif olacak)
 MODEL_PATH = "ml_models/best.pt"
-# yolo_model = YOLO(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
+# Eğer dosya varsa modeli yükle, yoksa None yap (Hata vermemesi için)
+yolo_model = YOLO(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
 
-def analyze_image_with_yolo(image_path: str) -> str:
+# 3. İŞ KURALLARI (BUSINESS LOGIC) - data.yaml sınıflarını ana kategorilere bağlama
+CLASS_MAPPING = {
+    # Yol Sorunu
+    "pothole": "Yol Sorunu (Çukur)",
+    
+    # Su Sorunu
+    "puddle": "Su Sorunu (Su Birikintisi)",
+    "manhole": "Su Sorunu (Rögar Kapağı)",
+    
+    # Çevre Kirliliği
+    "garbage": "Çevre Kirliliği (Çöp)",
+    "garbage-bin": "Çevre Kirliliği (Çöp Konteyneri)",
+    
+    # Aydınlatma Sorunu
+    "street-light": "Aydınlatma Sorunu (Sokak Lambası)",
+    
+    # Diğer Sorunlar
+    "bench": "Diğer Sorunlar (Bank)",
+    "cat": "Diğer Sorunlar (Kedi)",
+    "dog": "Diğer Sorunlar (Köpek)",
+    "traffic-light": "Diğer Sorunlar (Trafik Işığı)",
+    "traffic-sign": "Diğer Sorunlar (Trafik Tabelası)"
+}
+
+def analyze_image_with_yolo(image_path: str) -> dict:
     """
     Fotoğrafı YOLOv8'e sokar. 
-    ER Diyagramı (ISSUE_CLASSIFICATION) standartlarına uygun olarak 
-    kategori adını ve güven skorunu (confidence) sözlük olarak döndürür.
+    Resimdeki sorunları tespit edip en yüksek güven skoruna sahip olanını
+    ER Diyagramı (ISSUE_CLASSIFICATION) standartlarına uygun olarak döndürür.
     """
-    # Şimdilik modelimiz olmadığı için buraya örnek bir değer döndürüyoruz.
-    # Model eklendiğinde buradaki yorum satırlarını kaldıracağız.
+    # Model yüklenmemişse hata dönmesin, varsayılan bir değer dönsün
+    if not yolo_model: 
+        print("HATA: ml_models/best.pt bulunamadı!")
+        return {"categoryLabel": "Bilinmeyen Sorun", "confidenceScore": 0.5}
     
-    # if not yolo_model: 
-    #     return {"categoryLabel": "unknown", "confidenceScore": 0.0}
+    # YOLO Modelini Çalıştır (Sadece %50 ve üzeri emin olduklarını al)
+    results = yolo_model.predict(source=image_path, imgsz=512, conf=0.25)
     
-    # results = yolo_model(image_path)
-    # en_iyi_tahmin_index = results[0].probs.top1
-    # detected_class = results[0].names[en_iyi_tahmin_index] 
-    # confidence = float(results[0].probs.top1conf) # YOLO'nun emin olma oranı
+    # Eğer resimde hiçbir anomali/sorun tespit edilemezse:
+    if len(results[0].boxes) == 0:
+        return {"categoryLabel": "Sorun Tespit Edilemedi", "confidenceScore": 0.0}
+
+    # Resimde birden fazla sorun varsa, modelin en emin olduğu sorunu buluyoruz
+    boxes = results[0].boxes
+    best_box = max(boxes, key=lambda b: float(b.conf[0])) # conf değeri en yüksek olanı al
     
-    # return {"categoryLabel": detected_class, "confidenceScore": confidence}
+    # Tespit edilen nesnenin IDsini, adını ve güven skorunu al
+    class_id = int(best_box.cls[0].item())
+    confidence = float(best_box.conf[0].item())
     
-    # Şimdilik test için ER diyagramına uygun sahte bir veri dönüyoruz:
+    # Modelin içindeki İngilizce ismi çek 
+    detected_class_name = results[0].names[class_id] 
+    
+    # İngilizce ismi sözlükten geçirip gerekli formataa çevir
+    # (Eğer sözlükte yoksa, İngilizce ismini direkt yazar)
+    mapped_category = CLASS_MAPPING.get(detected_class_name, detected_class_name)
+
     return {
-        "categoryLabel": "pothole", 
-        "confidenceScore": 0.96 # %96 emin
+        "categoryLabel": mapped_category, 
+        "confidenceScore": round(confidence, 2)
     }
 
 def generate_complaint_text(category_label: str) -> str:
     """
     Kullanıcının belirlediği kısıtlamalarla kısa ve resmi şikayet metni oluşturur.
     """
+    # Eğer YOLO hiçbir şey bulamadıysa Gemini'yi yormayalım
+    if category_label == "Sorun Tespit Edilemedi":
+        return "Görselde belirgin bir altyapı sorunu tespit edilememiştir. Lütfen kontrol ediniz."
+
     prompt = f"""
     Sen İstanbul'da yaşayan duyarlı bir vatandaşsın. 
     Karşılaştığın bir altyapı sorunu için belediyeye resmi bir şikayet metni yazıyorsun.
@@ -56,7 +97,6 @@ def generate_complaint_text(category_label: str) -> str:
         )
         
         if response and response.text:
-            # Metni temizleyip döndür
             return response.text.strip()
         else:
             return f"Tespit edilen {category_label} sorununun ivedilikle giderilmesini talep ediyorum."

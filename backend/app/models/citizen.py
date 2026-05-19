@@ -26,5 +26,9 @@ class Citizen(Base):
     failedLoginAttempts = Column(Integer, default=0) # Hatalı deneme sayısı
     lockoutUntil = Column(DateTime, nullable=True)   # Kilit bitiş zamanı
 
+    # --- KVKK ONAYI İÇİN ---
+    kvkkAccepted = Column(Boolean, default=False, nullable=False) 
+    kvkkAcceptedAt = Column(DateTime, nullable=True) # Ne zaman onaylandığının damgası
+
     # Raporlarla olan ters bağlantı
     reports = relationship("Report", back_populates="citizen")

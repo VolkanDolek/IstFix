@@ -26,6 +26,7 @@ pydantic-settings
 google-genai
 ultralytics
 Pillow
+opencv-python-headless
 
 # Geography & Maps
 geopy

@@ -84,6 +84,7 @@ async def create_report(
     yolo_result = analyze_image_with_yolo(original_path) # YOLO tam kalite fotoğrafı görsün
     category_label = yolo_result["categoryLabel"] # String'i içinden çekiyoruz
     confidence_score = yolo_result["confidenceScore"] # İleride veritabanına kaydetmek için
+    print(f"🚀 AI TEST -> Bulunan: {category_label} | Emin Olma Oranı: % {int(confidence_score * 100)}")
 
     # --- HIZLANDIRMA NOKTASI: PARALEL ÇALIŞMA ---
     # Gemini metin üretimi ve Geopy konum tespiti dış servislere (internet) bağlıdır.
@@ -131,12 +132,14 @@ async def create_report(
     new_report = Report(
         CITIZENId=current_user.id,
         MUNICIPALITYId=target_municipality_id, # Tespit edilen belediye ID 
-        photoUrl=original_path, # DB'de orijinal yol kalsın
+        photoUrl=f"uploads/{original_file_name}", # DB'de orijinal yol kalsın
         latitude=latitude,
         longitude=longitude,
         writtenDescription=final_description,
         isDescriptionAiGenerated=is_ai_generated,
-        processingStatus="Pending"
+        processingStatus="Pending",
+        categoryLabel=category_label,
+        confidenceScore=float(confidence_score)
     )
 
     try:
@@ -158,8 +161,11 @@ async def create_report(
         <p>İstanbul genelinde yürütülen akıllı şehir ve altyapı iyileştirme çalışmaları kapsamında, vatandaşlar tarafından sistemimize bir saha raporu iletilmiştir.</p>
 
         <div style="background-color: #f9f9f9; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0;">
+            <strong>Sistem Rapor ID:</strong> <span style="font-family: monospace; color: #0b3d6b; font-weight: bold;">{new_report.id}</span><br>
             <strong>Tespit Edilen Kategori:</strong> {category_label.upper()}<br>
-            <strong>Konum:</strong> {municipality_name}<br>
+            <strong>İlgili Belediye:</strong> {municipality_name}<br>
+            <strong>Koordinatlar:</strong> {latitude}, {longitude}<br>
+            <strong>Harita Bağlantısı:</strong> <a href="https://www.google.com/maps?q={latitude},{longitude}" style="color: #3498db; text-decoration: none;">Google Haritalar'da Görüntüle</a><br>
             <strong>Raporu Gönderen:</strong> {reporter_email}<br>  
             <strong>Rapor Özeti:</strong> {final_description}
         </div>
@@ -227,6 +233,33 @@ def get_reports(
     
     return reports
 
+@router.get("/{report_id}", response_model=ReportResponse)
+def get_report_detail(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: Citizen = Depends(get_current_user)
+):
+    """
+    Belirli bir raporun detaylarını ID'sine göre getirir.
+    Kullanıcılar sadece kendi raporlarını, adminler ise tüm raporları görebilir.
+    """
+    
+    # Veritabanında raporu ID'ye göre ara
+    report = db.query(Report).filter(Report.id == report_id).first()
+    
+    # Rapor veritabanında yoksa 404 dön
+    if not report:
+        raise HTTPException(status_code=404, detail="Rapor bulunamadı.")
+        
+    # Yetki kontrolü: Kullanıcı admin değilse ve rapor ona ait değilse erişimi engelle (403 Forbidden)
+    if not current_user.isAdmin and report.CITIZENId != current_user.id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Bu raporun detaylarını görüntüleme yetkiniz yok."
+        )
+        
+    return report
+
 @router.patch("/{report_id}/status", response_model=ReportResponse)
 def update_report_status(
     report_id: uuid.UUID,
@@ -252,3 +285,40 @@ def update_report_status(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Güncelleme hatası: {str(e)}")
+
+# --- ADMİN ÖZEL - RAPOR SİLME (ADMIN REPORT PURGE) ---    
+@router.delete("/{report_id}")
+def delete_report_by_admin(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_admin: Citizen = Depends(get_current_admin)
+):
+    """
+    Sistem yöneticisinin, belirtilen benzersiz kimliğe (ID) sahip herhangi bir raporu kalıcı olarak silmesini sağlar.
+    
+    Güvenlik Denetimi:
+    - Sadece 'get_current_admin' üzerinden doğrulanmış 'Admin' yetki sınıfındaki kullanıcılar sistemden rapor silebilir.
+    - Normal vatandaşların bu endpoint'e erişimi engellenmiştir.
+    """
+    try:
+        report_to_delete = db.query(Report).filter(Report.id == report_id).first()
+        
+        if not report_to_delete:
+            raise HTTPException(
+                status_code=404,
+                detail="Belirtilen kimliğe sahip rapor sistemde mevcut değil veya daha önce silinmiş."
+            )
+        
+        db.delete(report_to_delete)
+        db.commit()
+        return {"message": f"{report_id} kimlikli rapor başarıyla kalıcı olarak sistemden kaldırıldı."}
+        
+    except HTTPException:
+        # 404 hatasını ezmemek için direkt fırlatıyoruz
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Rapor silme işlemi veritabanı senkronizasyon hatasından dolayı başarısız oldu: {str(e)}"
+        )

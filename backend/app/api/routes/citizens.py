@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.citizen import Citizen
-from app.schemas.citizen_schema import ForgotPasswordRequest, ResetPasswordConfirm, ChangePasswordRequest
-from app.api.deps import get_current_user
+from app.schemas.citizen_schema import ForgotPasswordRequest, ResetPasswordConfirm, ChangePasswordRequest, VerifyCodeRequest
+from app.api.deps import get_current_user, get_current_admin
 from app.core.security import get_password_hash, verify_password
 from app.services.mail_service import send_otp_email
 
@@ -124,3 +124,72 @@ def change_password(
         )
     
     return {"message": "Şifreniz başarıyla güncellendi."}
+
+# --- ARA AKIŞ: KOD DOĞRULAMA KONTROLÜ ---
+@router.post("/verify-reset-code")
+def verify_reset_code(data: VerifyCodeRequest, db: Session = Depends(get_db)):
+    """Sadece kodun doğru olup olmadığını kontrol eder, şifreyi değiştirmez."""
+    user = db.query(Citizen).filter(Citizen.emailAddress == data.email).first()
+    
+    if not user or user.resetCode != data.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Girdiğiniz doğrulama kodu hatalı."
+        )
+
+    if datetime.utcnow() > user.resetCodeExpiresAt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Kodun süresi dolmuş. Lütfen tekrar kod isteyin."
+        )
+
+    return {"message": "Kod başarıyla doğrulandı."}
+
+# --- 4. AKIŞ: ADMİN ÖZEL - TÜM KULLANICILARI LİSTELE ---
+@router.get("/", status_code=status.HTTP_200_OK)
+def get_all_citizens(db: Session = Depends(get_db), current_admin: Citizen = Depends(get_current_admin)):
+    """
+    Sistem veritabanında kayıtlı olan tüm vatandaşların (Citizens) detaylı listesini geriye döner.
+    
+    Güvenlik Denetimi:
+    - Bu endpoint korumalıdır. Sadece 'Admin' rol yetkisine sahip kullanıcılar erişebilir.
+    - Yetkisiz isteklerde 'get_current_admin' bağımlılığı otomatik olarak 403 Forbidden fırlatır.
+    """
+    try:
+        citizens = db.query(Citizen).all()
+        return citizens
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Kullanıcı listesi veritabanından çekilirken sistemsel hata oluştu: {str(e)}"
+        )
+    
+# --- 5. AKIŞ: ADMİN ÖZEL - KULLANICI HESABI SİLME (ADMIN CITIZEN PURGE) ---
+@router.delete("/{citizen_id}", status_code=status.HTTP_200_OK)
+def delete_citizen_account_by_admin(citizen_id: str, db: Session = Depends(get_db), current_admin: Citizen = Depends(get_current_admin)):
+    """
+    Sistem yöneticisinin, belirtilen benzersiz kimliğe (ID) sahip herhangi bir vatandaşın hesabını kalıcı olarak silmesini sağlar.
+    
+    Güvenlik Denetimi:
+    - Vatandaşların kendi hesaplarını veya başkalarını silme yetkisi yoktur.
+    - Bu işlem kritik bir operasyon olduğu için sadece 'get_current_admin' bağımlılığı üzerinden doğrulanmış adminler tarafından tetiklenebilir.
+    """
+    try:
+        account_to_delete = db.query(Citizen).filter(Citizen.id == citizen_id).first()
+        if not account_to_delete:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Silinmek istenen kullanıcı hesabı sistemde bulunamadı."
+            )
+        
+        db.delete(account_to_delete)
+        db.commit()
+        return {"message": f"{citizen_id} kimlikli kullanıcı hesabı sistemden kalıcı olarak kaldırıldı."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Hesap imha prosedürü işletilirken kritik bir hata meydana geldi: {str(e)}"
+        )

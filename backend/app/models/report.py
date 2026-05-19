@@ -34,6 +34,22 @@ class Report(Base):
     submissionTimestamp = Column(DateTime, default=datetime.utcnow)
     processingStatus = Column(String(20), default="Pending") # Pending, Classifying, vb.
 
+    # --- AI Analiz Sonuçlarını Saklayacak Kolonlar ---
+    categoryLabel = Column(String(100), nullable=True)
+    confidenceScore = Column(Float, nullable=True)
+
+    # Pydantic Şeması İçin Sanal Köprü
+    # Bu özellik, şemadaki 'classification' alanı ile veritabanındaki 
+    # 'categoryLabel' ve 'confidenceScore' arasında otomatik bağ kurar.
+    @property
+    def classification(self):
+        if self.categoryLabel:
+            return {
+                "categoryLabel": self.categoryLabel,
+                "confidenceScore": self.confidenceScore
+            }
+        return None
+
     # --- İLİŞKİLER (RELATIONSHIPS) ---
     # Bu kısımlar SQLAlchemy üzerinden nesnelere kolay erişim sağlar
     citizen = relationship("Citizen", back_populates="reports")

@@ -1,20 +1,19 @@
 # backend/app/api/routes/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
 from app.core.database import get_db
 from app.models.citizen import Citizen
 from app.models.token import BlacklistedToken
 from app.services.token_service import cleanup_expired_tokens
 from app.schemas.citizen_schema import CitizenCreate, CitizenResponse
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.api.deps import get_current_user, get_current_admin
+from app.api.deps import get_current_user, get_current_admin, reusable_oauth2
 from datetime import datetime, timedelta
 
 router = APIRouter()
 
-# Token'ı header'dan çekebilmek için
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+# Buradaki fazlalık 'oauth2_scheme' silindi. Artık 'reusable_oauth2' kullanıyoruz.
 
 @router.post("/register", response_model=CitizenResponse, status_code=status.HTTP_201_CREATED)
 def register(citizen: CitizenCreate, db: Session = Depends(get_db)):
@@ -33,7 +32,9 @@ def register(citizen: CitizenCreate, db: Session = Depends(get_db)):
     new_citizen = Citizen(
         name=citizen.name,
         emailAddress=citizen.emailAddress, 
-        passwordHash=hashed_pw
+        passwordHash=hashed_pw,
+        kvkkAccepted=citizen.kvkkAccepted, # Pydantic zaten True olduğunu doğruladı
+        kvkkAcceptedAt=datetime.utcnow() 
     )
     
     try:
@@ -131,8 +132,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         }
     }
 
+# DİKKAT: Buradaki Depends içindeki değer reusable_oauth2 olarak güncellendi
 @router.post("/logout")
-def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def logout(token: str = Depends(reusable_oauth2), db: Session = Depends(get_db)):
     """Mevcut Token'ı kara listeye alarak geçersiz kılar."""
     try:
         # Eğer bu token zaten kara listedeyse tekrar eklemeye çalışınca hata almamak için
