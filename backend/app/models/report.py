@@ -33,7 +33,7 @@ class Report(Base):
     # 4. Zaman ve Durum
     # GÜNCELLEME: utcnow() yerine modern timezone-aware datetime kullanıldı
     submissionTimestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    processingStatus = Column(String(20), default="Pending") # Pending, Classifying, vb.
+    processingStatus = Column(String(20), default="Pending") # Pending, InProgress, vb.
 
     # --- AI Analiz Sonuçlarını Saklayacak Kolonlar ---
     categoryLabel = Column(String(100), nullable=True)

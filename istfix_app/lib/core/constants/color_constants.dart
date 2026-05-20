@@ -31,4 +31,8 @@ class AppColors {
       durumBekliyor; // Turuncu - Bağlantı Aranıyor
   static const Color baglantiBasari =
       durumIletildi; // Yeşil - Bağlantı Sağlandı
+
+  // Rapor Gönderim Durum Renkleri
+  static const Color raporGonderildi = durumIletildi; // Yeşil
+  static const Color raporGonderilemedi = durumIletilemedi; // Kırmızı
 }

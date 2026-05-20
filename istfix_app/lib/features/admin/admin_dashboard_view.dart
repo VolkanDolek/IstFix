@@ -376,6 +376,8 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                       final Color catColor = _getCategoryColor(category);
 
                       return Card(
+                        // GÜNCELLEME: Rapor silinmesindeki liste kayması (illüzyon) sorununu çözen benzersiz kimlik (Key)
+                        key: ValueKey(reportId),
                         elevation: 2,
                         margin: const EdgeInsets.only(bottom: 12),
                         shape: RoundedRectangleBorder(

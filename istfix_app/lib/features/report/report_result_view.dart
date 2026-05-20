@@ -51,6 +51,13 @@ class ReportResultView extends StatelessWidget {
                   : 'assets/icons/ic_warning_circle.svg',
               width: 150,
               height: 150,
+              // GÜNCELLEME BURADA: Duruma göre renk filtresi uyguluyoruz
+              colorFilter: isSuccess
+                  ? null // Başarılıysa renk filtresi uygulamaz (null), hata varsa filtresini giydirir
+                  : const ColorFilter.mode(
+                      AppColors.raporGonderilemedi,
+                      BlendMode.srcIn,
+                    ),
             ),
             const SizedBox(height: 36),
 

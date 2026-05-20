@@ -3,7 +3,7 @@ import os
 import uuid
 import shutil
 import asyncio # Paralel çalışma için gerekli
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from PIL import Image # Görüntü küçültme için
 
@@ -56,6 +56,18 @@ async def create_report(
     İstFix Ana Akışı: Fotoğrafı işler, AI analizini yapar, DB'ye kaydeder ve belediyeye SendGrid ile mail atar.
     """
 
+    # =========================================================================
+    # GÜNCELLEME: 1. AŞAMAA - İSTANBUL DIŞI GEOfencing GÜVENLİK BARİYERİ
+    # =========================================================================
+    min_lat, max_lat = 40.70, 41.65
+    min_lng, max_lng = 27.90, 29.95
+    
+    if not (min_lat <= latitude <= max_lat and min_lng <= longitude <= max_lng):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Sağlanan koordinatlar İstanbul hizmet alanı dışındadır. Veri bütünlüğü ihlal edildi."
+        )
+
     # 2. Dosya İşlemleri (Orijinal ve Thumbnail)
     file_extension = image.filename.split(".")[-1]
     unique_id = uuid.uuid4()
@@ -84,7 +96,7 @@ async def create_report(
     yolo_result = analyze_image_with_yolo(original_path) # YOLO tam kalite fotoğrafı görsün
     category_label = yolo_result["categoryLabel"] # String'i içinden çekiyoruz
     confidence_score = yolo_result["confidenceScore"] # İleride veritabanına kaydetmek için
-    print(f"🚀 AI TEST -> Bulunan: {category_label} | Emin Olma Oranı: % {int(confidence_score * 100)}")
+    print(f"AI TEST -> Bulunan: {category_label} | Emin Olma Oranı: % {int(confidence_score * 100)}")
 
     # --- HIZLANDIRMA NOKTASI: PARALEL ÇALIŞMA ---
     # Gemini metin üretimi ve Geopy konum tespiti dış servislere (internet) bağlıdır.
@@ -111,19 +123,35 @@ async def create_report(
         complaint_text = "Rapor özeti oluşturulamadı."
         municipality_name = "Bilinmeyen"
 
-    # --- YENİ: BELEDİYE EŞLEŞTİRME MANTIĞI ---
-    # Geo servisinden gelen isimle veritabanındaki belediyeyi buluyoruz
-    db_municipality = db.query(Municipality).filter(Municipality.name == municipality_name).first()
+    # =========================================================================
+    # GÜNCELLEME: 2. AŞAMAA - DİNAMİK BELEDİYE EŞLEŞTİRME VE "EMAIL NOT DELIVERED" KONTROLÜ
+    # =========================================================================
+    # Konum servisinden isim hiç gelmediyse veya boş geldiyse hata fırlat
+    if not municipality_name or municipality_name.strip() == "" or municipality_name.lower() == "bilinmeyen":
+        if os.path.exists(original_path): os.remove(original_path)
+        if os.path.exists(resized_path) and resized_path != original_path: os.remove(resized_path)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="EMAIL_NOT_DELIVERED: Konum doğrulaması başarısız oldu, koordinata karşılık gelen bölge tespit edilemedi."
+        )
 
-    target_municipality_id = None
-    target_email = "test1@gmail.com" # Varsayılan fallback mail
+    # GÜNCELLEME: Sabit liste yerine doğrudan DB'den büyük/küçük harf duyarsız (case-insensitive) sorgu yapıyoruz.
+    # Böylece sisteme panelden yeni belediye eklense bile kod tıkır tıkır çalışmaya devam eder.
+    db_municipality = db.query(Municipality).filter(Municipality.name.ilike(municipality_name.strip())).first()
 
-    if db_municipality:
-        target_municipality_id = db_municipality.id
-        target_email = db_municipality.officialEmail
-        print(f"DEBUG: Belediye eşleşti: {db_municipality.name}, Mail: {target_email}")
-    else:
-        print(f"DEBUG: '{municipality_name}' veritabanında bulunamadı. Varsayılan mail kullanılacak.")
+    # Eğer koordinat İstanbul içinde çıksa bile DB'deki kayıtlı belediyelerimizle eşleşmiyorsa engelle!
+    if not db_municipality:
+        if os.path.exists(original_path): os.remove(original_path)
+        if os.path.exists(resized_path) and resized_path != original_path: os.remove(resized_path)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"EMAIL_NOT_DELIVERED: Tespit edilen '{municipality_name}' bölgesi, sistemde aktif kayıtlı bir belediye ile uyuşmuyor."
+        )
+
+    # Eşleşme sağlandığına göre bilgileri güvenle değişkenlere atıyoruz
+    target_municipality_id = db_municipality.id
+    target_email = db_municipality.officialEmail
+    print(f"DEBUG: Dinamik Belediye Eşleşti -> ID: {target_municipality_id} | İsim: {db_municipality.name} | Mail: {target_email}")
 
     # 4. Veritabanı Kaydı
     final_description = writtenDescription if writtenDescription else complaint_text
@@ -205,7 +233,7 @@ async def create_report(
 
     # (Opsiyonel) Mail gittikten sonra thumbnail dosyası silebiliriz, çünkü artık ihtiyacımız kalmaz. 
     # Orijinal dosya DB'de kalmaya devam eder.
-    if os.path.exists(resized_path):
+    if os.path.exists(resized_path) and resized_path != original_path:
         os.remove(resized_path)
 
     return new_report
@@ -225,11 +253,11 @@ def get_reports(
     if current_user.isAdmin:
         # Admin girişi tüm raporları çeker
         print(f"DEBUG: Admin ({current_user.emailAddress}) tüm raporları çekiyor.")
-        reports = db.query(Report).all()
+        reports = db.query(Report).order_by(Report.submissionTimestamp.desc()).all()
     else:
         # Normal kullanıcı sadece ona ait olanları çeker
         print(f"DEBUG: Kullanıcı ({current_user.emailAddress}) kendi raporlarını çekiyor.")
-        reports = db.query(Report).filter(Report.CITIZENId == current_user.id).all()
+        reports = db.query(Report).filter(Report.CITIZENId == current_user.id).order_by(Report.submissionTimestamp.desc()).all()
     
     return reports
 
