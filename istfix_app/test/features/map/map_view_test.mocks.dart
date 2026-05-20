@@ -75,15 +75,17 @@ class _FakeMacOsOptions_7 extends _i1.SmartFake implements _i3.MacOsOptions {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockClient extends _i1.Mock implements _i2.Client {
-  MockClient() {
-    _i1.throwOnMissingStub(this);
-  }
-
   @override
   _i4.Future<_i2.Response> head(Uri? url, {Map<String, String>? headers}) =>
       (super.noSuchMethod(
             Invocation.method(#head, [url], {#headers: headers}),
             returnValue: _i4.Future<_i2.Response>.value(
+              _FakeResponse_0(
+                this,
+                Invocation.method(#head, [url], {#headers: headers}),
+              ),
+            ),
+            returnValueForMissingStub: _i4.Future<_i2.Response>.value(
               _FakeResponse_0(
                 this,
                 Invocation.method(#head, [url], {#headers: headers}),
@@ -97,6 +99,12 @@ class MockClient extends _i1.Mock implements _i2.Client {
       (super.noSuchMethod(
             Invocation.method(#get, [url], {#headers: headers}),
             returnValue: _i4.Future<_i2.Response>.value(
+              _FakeResponse_0(
+                this,
+                Invocation.method(#get, [url], {#headers: headers}),
+              ),
+            ),
+            returnValueForMissingStub: _i4.Future<_i2.Response>.value(
               _FakeResponse_0(
                 this,
                 Invocation.method(#get, [url], {#headers: headers}),
@@ -119,6 +127,16 @@ class MockClient extends _i1.Mock implements _i2.Client {
               {#headers: headers, #body: body, #encoding: encoding},
             ),
             returnValue: _i4.Future<_i2.Response>.value(
+              _FakeResponse_0(
+                this,
+                Invocation.method(
+                  #post,
+                  [url],
+                  {#headers: headers, #body: body, #encoding: encoding},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i4.Future<_i2.Response>.value(
               _FakeResponse_0(
                 this,
                 Invocation.method(
@@ -154,6 +172,16 @@ class MockClient extends _i1.Mock implements _i2.Client {
                 ),
               ),
             ),
+            returnValueForMissingStub: _i4.Future<_i2.Response>.value(
+              _FakeResponse_0(
+                this,
+                Invocation.method(
+                  #put,
+                  [url],
+                  {#headers: headers, #body: body, #encoding: encoding},
+                ),
+              ),
+            ),
           )
           as _i4.Future<_i2.Response>);
 
@@ -171,6 +199,16 @@ class MockClient extends _i1.Mock implements _i2.Client {
               {#headers: headers, #body: body, #encoding: encoding},
             ),
             returnValue: _i4.Future<_i2.Response>.value(
+              _FakeResponse_0(
+                this,
+                Invocation.method(
+                  #patch,
+                  [url],
+                  {#headers: headers, #body: body, #encoding: encoding},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i4.Future<_i2.Response>.value(
               _FakeResponse_0(
                 this,
                 Invocation.method(
@@ -206,6 +244,16 @@ class MockClient extends _i1.Mock implements _i2.Client {
                 ),
               ),
             ),
+            returnValueForMissingStub: _i4.Future<_i2.Response>.value(
+              _FakeResponse_0(
+                this,
+                Invocation.method(
+                  #delete,
+                  [url],
+                  {#headers: headers, #body: body, #encoding: encoding},
+                ),
+              ),
+            ),
           )
           as _i4.Future<_i2.Response>);
 
@@ -214,6 +262,12 @@ class MockClient extends _i1.Mock implements _i2.Client {
       (super.noSuchMethod(
             Invocation.method(#read, [url], {#headers: headers}),
             returnValue: _i4.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(#read, [url], {#headers: headers}),
+              ),
+            ),
+            returnValueForMissingStub: _i4.Future<String>.value(
               _i6.dummyValue<String>(
                 this,
                 Invocation.method(#read, [url], {#headers: headers}),
@@ -230,6 +284,9 @@ class MockClient extends _i1.Mock implements _i2.Client {
       (super.noSuchMethod(
             Invocation.method(#readBytes, [url], {#headers: headers}),
             returnValue: _i4.Future<_i7.Uint8List>.value(_i7.Uint8List(0)),
+            returnValueForMissingStub: _i4.Future<_i7.Uint8List>.value(
+              _i7.Uint8List(0),
+            ),
           )
           as _i4.Future<_i7.Uint8List>);
 
@@ -238,6 +295,12 @@ class MockClient extends _i1.Mock implements _i2.Client {
       (super.noSuchMethod(
             Invocation.method(#send, [request]),
             returnValue: _i4.Future<_i2.StreamedResponse>.value(
+              _FakeStreamedResponse_1(
+                this,
+                Invocation.method(#send, [request]),
+              ),
+            ),
+            returnValueForMissingStub: _i4.Future<_i2.StreamedResponse>.value(
               _FakeStreamedResponse_1(
                 this,
                 Invocation.method(#send, [request]),
@@ -258,15 +321,15 @@ class MockClient extends _i1.Mock implements _i2.Client {
 /// See the documentation for Mockito's code generation for more information.
 class MockFlutterSecureStorage extends _i1.Mock
     implements _i3.FlutterSecureStorage {
-  MockFlutterSecureStorage() {
-    _i1.throwOnMissingStub(this);
-  }
-
   @override
   _i3.IOSOptions get iOptions =>
       (super.noSuchMethod(
             Invocation.getter(#iOptions),
             returnValue: _FakeIOSOptions_2(this, Invocation.getter(#iOptions)),
+            returnValueForMissingStub: _FakeIOSOptions_2(
+              this,
+              Invocation.getter(#iOptions),
+            ),
           )
           as _i3.IOSOptions);
 
@@ -275,6 +338,10 @@ class MockFlutterSecureStorage extends _i1.Mock
       (super.noSuchMethod(
             Invocation.getter(#aOptions),
             returnValue: _FakeAndroidOptions_3(
+              this,
+              Invocation.getter(#aOptions),
+            ),
+            returnValueForMissingStub: _FakeAndroidOptions_3(
               this,
               Invocation.getter(#aOptions),
             ),
@@ -289,6 +356,10 @@ class MockFlutterSecureStorage extends _i1.Mock
               this,
               Invocation.getter(#lOptions),
             ),
+            returnValueForMissingStub: _FakeLinuxOptions_4(
+              this,
+              Invocation.getter(#lOptions),
+            ),
           )
           as _i3.LinuxOptions);
 
@@ -297,6 +368,10 @@ class MockFlutterSecureStorage extends _i1.Mock
       (super.noSuchMethod(
             Invocation.getter(#wOptions),
             returnValue: _FakeWindowsOptions_5(
+              this,
+              Invocation.getter(#wOptions),
+            ),
+            returnValueForMissingStub: _FakeWindowsOptions_5(
               this,
               Invocation.getter(#wOptions),
             ),
@@ -311,6 +386,10 @@ class MockFlutterSecureStorage extends _i1.Mock
               this,
               Invocation.getter(#webOptions),
             ),
+            returnValueForMissingStub: _FakeWebOptions_6(
+              this,
+              Invocation.getter(#webOptions),
+            ),
           )
           as _i3.WebOptions);
 
@@ -319,6 +398,10 @@ class MockFlutterSecureStorage extends _i1.Mock
       (super.noSuchMethod(
             Invocation.getter(#mOptions),
             returnValue: _FakeMacOsOptions_7(
+              this,
+              Invocation.getter(#mOptions),
+            ),
+            returnValueForMissingStub: _FakeMacOsOptions_7(
               this,
               Invocation.getter(#mOptions),
             ),
@@ -407,6 +490,7 @@ class MockFlutterSecureStorage extends _i1.Mock
               #wOptions: wOptions,
             }),
             returnValue: _i4.Future<String?>.value(),
+            returnValueForMissingStub: _i4.Future<String?>.value(),
           )
           as _i4.Future<String?>);
 
@@ -431,6 +515,7 @@ class MockFlutterSecureStorage extends _i1.Mock
               #wOptions: wOptions,
             }),
             returnValue: _i4.Future<bool>.value(false),
+            returnValueForMissingStub: _i4.Future<bool>.value(false),
           )
           as _i4.Future<bool>);
 
@@ -480,6 +565,9 @@ class MockFlutterSecureStorage extends _i1.Mock
             returnValue: _i4.Future<Map<String, String>>.value(
               <String, String>{},
             ),
+            returnValueForMissingStub: _i4.Future<Map<String, String>>.value(
+              <String, String>{},
+            ),
           )
           as _i4.Future<Map<String, String>>);
 
@@ -511,6 +599,7 @@ class MockFlutterSecureStorage extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#isCupertinoProtectedDataAvailable, []),
             returnValue: _i4.Future<bool?>.value(),
+            returnValueForMissingStub: _i4.Future<bool?>.value(),
           )
           as _i4.Future<bool?>);
 }
