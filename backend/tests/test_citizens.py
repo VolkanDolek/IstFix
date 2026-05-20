@@ -3,7 +3,7 @@ import pytest
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, status # GÜNCELLEME: status kütüphanesi eklendi
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -191,4 +191,32 @@ def test_delete_citizen_account_by_admin():
     db = TestingSessionLocal()
     check_user = db.query(Citizen).filter(Citizen.id == user_id).first()
     assert check_user is None
+    db.close()
+
+# =====================================================================
+# GÜNCELLEME: 5. AKIŞ İÇİN ROL TABANLI KORUMA ENTEGRASYON TESTİ
+# =====================================================================
+def test_delete_admin_account_by_admin_forbidden():
+    """
+    Hiyerarşik Yetki Koruma Denetimi:
+    Sistem yöneticisi rolündeki bir kullanıcının, başka bir admin hesabını API katmanı 
+    üzerinden kalıcı olarak imha etme yetkisinin bloke edildiğini (403 Forbidden) doğrular.
+    """
+    db = TestingSessionLocal()
+    admin_to_delete = db.query(Citizen).filter(Citizen.emailAddress == "admin@istfix.com").first()
+    admin_id = str(admin_to_delete.id)
+    db.close()
+
+    # Admin oturumu simüle edilerek yine bir admin hesabına silme isteği (DELETE) gönderilir
+    response = client.delete(f"/api/citizens/{admin_id}")
+    
+    # API kalkanı sayesinde işlemin reddedilmesi ve HTTP 403 statüsünün dönmesi denetlenir
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    # GÜNCELLEME: citizens.py içerisindeki tam metne ("Sistem yöneticisi (Admin)...") uyum sağlandı
+    assert "Sistem yöneticisi (Admin) statüsündeki hesaplar mobil kontrol paneli üzerinden silinemez" in response.json()["detail"]
+
+    # Kritik Hesap Kontrolü: Engelleme sonrasında admin hesabının yerinde durduğu teyit edilir
+    db = TestingSessionLocal()
+    check_admin = db.query(Citizen).filter(Citizen.id == admin_id).first()
+    assert check_admin is not None
     db.close()

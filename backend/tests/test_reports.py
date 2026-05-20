@@ -4,7 +4,7 @@ import uuid
 import io
 from PIL import Image
 from unittest.mock import patch
-from fastapi import FastAPI
+from fastapi import FastAPI, status # GÜNCELLEME: status kütüphanesi eklendi
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -164,6 +164,50 @@ def test_create_report_success(mock_mail, mock_geo, mock_gemini, mock_yolo):
     mock_geo.assert_called_once()
     mock_mail.assert_called_once()
 
+# GÜNCELLEME: İstanbul dışı koordinatlar gönderildiğinde 400 hatası fırlatılmasını denetleyen siber güvenlik testi
+@patch("app.api.routes.reports.analyze_image_with_yolo")
+def test_create_report_out_of_istanbul_error(mock_yolo):
+    """
+    Kullanıcı arayüz kısıtlamalarını aşsa bile backend coğrafi koruma kalkanının (Geofencing)
+    İstanbul dışından gelen istekleri başarıyla engelleyip engellemediğini test eder (Savunma Derinliği).
+    """
+    response = client.post(
+        "/api/reports/upload",
+        data={
+            "latitude": 39.9334,  # Ankara koordinatları (Sınır dışı)
+            "longitude": 32.8597,
+        },
+        files={"image": ("hacker_resim.jpg", generate_test_image(), "image/jpeg")}
+    )
+    
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "İstanbul hizmet alanı dışındadır" in response.json()["detail"]
+
+# GÜNCELLEME: İstanbul içi koordinat olup DB belediyeleriyle uyuşmayan bölgelerde 422 (EMAIL_NOT_DELIVERED) test senaryosu
+@patch("app.api.routes.reports.analyze_image_with_yolo")
+@patch("app.api.routes.reports.generate_complaint_text")
+@patch("app.api.routes.reports.get_municipality_from_coords")
+def test_create_report_unknown_municipality_error(mock_geo, mock_gemini, mock_yolo):
+    """
+    Koordinat İstanbul sınırlarında olsa bile, coğrafi servis veritabanımızda tanımlı olmayan 
+    bir bölge veya 'Bilinmeyen' döndürdüğünde mailin gönderilmesini engelleyen yapıyı denetler.
+    """
+    mock_yolo.return_value = {"categoryLabel": "Atık Sorunu", "confidenceScore": 0.88}
+    mock_gemini.return_value = "İlgili çevre kirliliğinin temizlenmesini rica ederim."
+    mock_geo.return_value = "Bursa"  # Veritabanında kayıtlı olmayan / sahte bir bölge tetiklendi
+    
+    response = client.post(
+        "/api/reports/upload",
+        data={
+            "latitude": 41.05,
+            "longitude": 28.50, # Sınır içi koordinatlar
+        },
+        files={"image": ("gecersiz_bolge.jpg", generate_test_image(), "image/jpeg")}
+    )
+    
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert "EMAIL_NOT_DELIVERED" in response.json()["detail"]
+
 def test_get_my_reports_isolation():
     """
     Bireysel veri gizliliği (Data Isolation) testi:
@@ -178,8 +222,8 @@ def test_get_my_reports_isolation():
         CITIZENId=user.id, 
         categoryLabel="Çöp", 
         confidenceScore=0.9, 
-        latitude=0.0, 
-        longitude=0.0,
+        latitude=40.99, # GÜNCELLEME: Şemaya uyum için gerçekçi İstanbul verisi
+        longitude=29.02, # GÜNCELLEME: Şemaya uyum için gerçekçi İstanbul verisi
         photoUrl="dummy_path.jpg" 
     )
     db.add(rapor)
@@ -209,8 +253,8 @@ def test_admin_update_report_status():
         processingStatus="Pending", 
         categoryLabel="Lamba", 
         confidenceScore=0.9, 
-        latitude=0.0, 
-        longitude=0.0,
+        latitude=40.99, # GÜNCELLEME: Şemaya uyum için gerçekçi İstanbul verisi
+        longitude=29.02, # GÜNCELLEME: Şemaya uyum için gerçekçi İstanbul verisi
         photoUrl="dummy_path.jpg"
     )
     db.add(rapor)
@@ -226,3 +270,35 @@ def test_admin_update_report_status():
     
     assert response.status_code == 200
     assert response.json()["processingStatus"] == "Resolved"
+
+# --- ADMİN ÖZEL - RAPOR SİLME (ADMIN REPORT PURGE) TESTİ ---
+def test_delete_report_by_admin():
+    db = TestingSessionLocal()
+    user = db.query(Citizen).filter(Citizen.emailAddress == "vatandas@istfix.com").first()
+    
+    # Silinmek üzere örnek bir rapor oluşturuyoruz
+    rapor = Report(
+        CITIZENId=user.id, 
+        processingStatus="Pending", 
+        categoryLabel="Yol Sorunu", 
+        confidenceScore=0.85, 
+        latitude=40.99, 
+        longitude=29.02, 
+        photoUrl="dummy_path_to_delete.jpg"
+    )
+    db.add(rapor)
+    db.commit()
+    rapor_id = rapor.id
+    db.close()
+
+    # Admin kimliğiyle rapor silme isteği
+    response = client.delete(f"/api/reports/{rapor_id}")
+    
+    assert response.status_code == 200
+    assert "kalıcı olarak sistemden kaldırıldı" in response.json()["message"]
+
+    # Raporun gerçekten silindiğini teyit et
+    db = TestingSessionLocal()
+    deleted_report = db.query(Report).filter(Report.id == rapor_id).first()
+    assert deleted_report is None
+    db.close()

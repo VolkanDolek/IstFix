@@ -191,6 +191,15 @@ def delete_citizen_account_by_admin(citizen_id: str, db: Session = Depends(get_d
                 detail="Silinmek istenen kullanıcı hesabı sistemde bulunamadı."
             )
         
+        # GÜNCELLEME: HİYERARŞİK KORUMA VE ROL TABANLI SİLME KISITLAMASI KATMANI
+        # Sistem bütünlüğünü ve hiyerarşik güvenliği korumak amacıyla, 'Admin' yetki 
+        # sınıfına sahip hesapların silme operasyonları API katmanında bloke edilir.
+        if account_to_delete.isAdmin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Yetki İhlali: Sistem yöneticisi (Admin) statüsündeki hesaplar mobil kontrol paneli üzerinden silinemez."
+            )
+        
         db.delete(account_to_delete)
         db.commit()
         return {"message": f"{citizen_id} kimlikli kullanıcı hesabı sistemden kalıcı olarak kaldırıldı."}

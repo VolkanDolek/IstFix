@@ -378,42 +378,78 @@ class _AdminUsersViewState extends State<AdminUsersView> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-
-                                  // Hesap İmha Butonu
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      if (userId.isNotEmpty) {
-                                        _confirmDeleteUser(userId, displayName);
-                                      } else {
-                                        _showErrorSnackBar(
-                                          "Geçersiz işlem: Kullanıcı ID bulunamadı.",
-                                        );
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.shade500,
-                                      shape: RoundedRectangleBorder(
+                                  // GÜNCELLEME: Rol tabanlı imha kısıtlaması katmanı
+                                  // Kart sahibi sivil vatandaş ise silme aksiyonunu sağlayan buton işlenir
+                                  if (!isAdmin)
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        if (userId.isNotEmpty) {
+                                          _confirmDeleteUser(
+                                            userId,
+                                            displayName,
+                                          );
+                                        } else {
+                                          _showErrorSnackBar(
+                                            "Geçersiz işlem: Kullanıcı ID bulunamadı.",
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade500,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.person_remove_rounded,
+                                        size: 18,
+                                        color: Colors.white,
+                                      ),
+                                      label: const Text(
+                                        "Hesabı Sil",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    )
+                                  // Kart sahibi üst düzey yönetici (Admin) ise hiyerarşik güvenliği sağlamak için imha butonu bloke edilir
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 10,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.lock_outline,
+                                            size: 16,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "Silinemez",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      elevation: 0,
                                     ),
-                                    icon: const Icon(
-                                      Icons.person_remove_rounded,
-                                      size: 18,
-                                      color: Colors.white,
-                                    ),
-                                    label: const Text(
-                                      "Hesabı Sil",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
                             ],
