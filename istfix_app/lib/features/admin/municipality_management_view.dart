@@ -4,7 +4,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
 
 class MunicipalityManagementView extends StatefulWidget {
-  const MunicipalityManagementView({super.key});
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir servisler eklendi.
+  final Dio? dio;
+  final FlutterSecureStorage? secureStorage;
+
+  const MunicipalityManagementView({
+    super.key,
+    this.dio,
+    this.secureStorage,
+  });
 
   @override
   State<MunicipalityManagementView> createState() =>
@@ -13,8 +21,9 @@ class MunicipalityManagementView extends StatefulWidget {
 
 class _MunicipalityManagementViewState
     extends State<MunicipalityManagementView> {
-  final Dio _dio = Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
-  final _storage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırıldı, test veya gerçek servisler initState içinde atanacak.
+  late final Dio _dio;
+  late final FlutterSecureStorage _storage;
 
   List<dynamic> _municipalities = [];
   bool _isLoading = true;
@@ -22,6 +31,10 @@ class _MunicipalityManagementViewState
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse orijinal paketleri kullan
+    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+    _storage = widget.secureStorage ?? const FlutterSecureStorage();
+
     _fetchMunicipalities();
   }
 

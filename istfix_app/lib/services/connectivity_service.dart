@@ -5,7 +5,12 @@ import 'package:geolocator/geolocator.dart';
 /// Cihazın donanımsal erişilebilirlik durumlarını (İnternet ve GPS)
 /// merkezi olarak takip eden servis sınıfı.
 class ConnectivityService {
-  final _connectivity = Connectivity();
+  final Connectivity _connectivity;
+
+  // DEPENDENCY INJECTION: Testlerde dışarıdan sahte (mock) sınıf verebilmek için eklendi.
+  // Normal çalışmada değer verilmezse kendisi orijinal Connectivity()'yi oluşturur.
+  ConnectivityService({Connectivity? connectivity})
+    : _connectivity = connectivity ?? Connectivity();
 
   /// İnternet bağlantı değişikliklerini yayınlayan akış.
   Stream<List<ConnectivityResult>> get connectivityStream =>

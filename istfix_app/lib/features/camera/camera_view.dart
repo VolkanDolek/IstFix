@@ -7,7 +7,17 @@ import 'package:istfix_app/features/report/report_draft_view.dart';
 /// Rapor taslağı ekranıyla birebir uyumlu (4:3) vizör oranına sahip,
 /// donanımsal kamera entegrasyonunu ve özel arayüz çizimlerini yöneten modül.
 class CameraView extends StatefulWidget {
-  const CameraView({super.key});
+  // GÜNCELLEME: Test edilebilirliği sağlamak için dışarıdan mocklanabilir parametreler eklendi
+  final CameraController? mockCameraController;
+  final Future<bool> Function()? mockCheckGps;
+  final Future<Position?> Function()? mockGetCurrentPosition;
+
+  const CameraView({
+    super.key,
+    this.mockCameraController,
+    this.mockCheckGps,
+    this.mockGetCurrentPosition,
+  });
 
   @override
   State<CameraView> createState() => CameraViewState();
@@ -29,14 +39,27 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initCamera();
+    
+    // GÜNCELLEME: Eğer dışarıdan mock controller verildiyse onu kullan, yoksa gerçek donanımı başlat
+    if (widget.mockCameraController != null) {
+      _cameraController = widget.mockCameraController;
+      // GÜNCELLEME: Sabit 'true' ataması yerine mock kameranın kendi durumunu okuyoruz.
+      // Bu sayede mock kamera başlatılmamış (uninitialized) olarak verildiğinde uygulama çökmek yerine yükleme ekranında kalır.
+      _isCameraInitialized = _cameraController!.value.isInitialized;
+    } else {
+      _initCamera();
+    }
+    
     _checkGpsStatus();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
+    // GÜNCELLEME: Sadece gerçek controller kullanıyorsak dispose et (Mock'lar dışarıdan yönetilir)
+    if (widget.mockCameraController == null) {
+      _cameraController?.dispose();
+    }
     super.dispose();
   }
 
@@ -47,6 +70,9 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
     }
+    // GÜNCELLEME: Mock kullanılıyorsa lifecycle olaylarını yoksay
+    if (widget.mockCameraController != null) return;
+
     if (state == AppLifecycleState.inactive) {
       _cameraController?.dispose();
     } else if (state == AppLifecycleState.resumed) {
@@ -78,6 +104,13 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
 
   /// Konum servislerinin ve gerekli uygulama izinlerinin durumunu denetler.
   Future<void> _checkGpsStatus() async {
+    // GÜNCELLEME: Mock fonksiyon verildiyse onu kullan
+    if (widget.mockCheckGps != null) {
+      bool active = await widget.mockCheckGps!();
+      if (mounted) setState(() => _isGpsActive = active);
+      return;
+    }
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     LocationPermission permission = await Geolocator.checkPermission();
 
@@ -104,9 +137,14 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
       Position? currentPosition;
 
       if (_isGpsActive) {
-        currentPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
+        // GÜNCELLEME: Mock konum fonksiyonu varsa onu çağır
+        if (widget.mockGetCurrentPosition != null) {
+          currentPosition = await widget.mockGetCurrentPosition!();
+        } else {
+          currentPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+          );
+        }
       }
 
       if (mounted) {
@@ -120,6 +158,8 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
           ),
         );
       }
+    } catch (e) {
+      debugPrint("Kamera yakalama hatası: $e");
     } finally {
       if (mounted) setState(() => _isCapturing = false);
     }
@@ -143,8 +183,9 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
             child: FittedBox(
               fit: BoxFit.cover,
               child: SizedBox(
-                width: _cameraController!.value.previewSize!.height,
-                height: _cameraController!.value.previewSize!.width,
+                // GÜNCELLEME: previewSize null gelme ihtimaline karşı güvenli atama (fallback) yapıldı.
+                width: _cameraController!.value.previewSize?.height ?? 1920,
+                height: _cameraController!.value.previewSize?.width ?? 1080,
                 child: CameraPreview(_cameraController!),
               ),
             ),

@@ -23,7 +23,12 @@ class MyReport {
 /// Kullanıcının kendi konumunu ve gönderdiği ihbarları interaktif bir harita (OpenStreetMap)
 /// üzerinde görüntülemesini sağlayan ana görünüm sınıfı.
 class MapView extends StatefulWidget {
-  const MapView({super.key});
+  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage bağımlılıkları eklendi.
+  final http.Client? httpClient;
+  final FlutterSecureStorage? secureStorage;
+
+  // GÜNCELLEME: Constructor'a httpClient ve secureStorage parametreleri eklendi.
+  const MapView({super.key, this.httpClient, this.secureStorage});
 
   @override
   State<MapView> createState() => _MapViewState();
@@ -32,8 +37,13 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   // Harita kamera hareketlerini kontrol eden yönetici nesne
   final MapController _mapController = MapController();
+
   // Yerel veri güvenliği için depolama yöneticisi
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
+  late final FlutterSecureStorage _secureStorage;
+
+  // GÜNCELLEME: API istekleri için kullanılacak HTTP istemcisi eklendi.
+  late final http.Client _httpClient;
 
   // Konum alınamadığı durumlarda kullanılacak varsayılan başlangıç noktası (İstanbul Merkezi)
   final LatLng _istanbulCenter = const LatLng(41.0082, 28.9784);
@@ -52,6 +62,10 @@ class _MapViewState extends State<MapView> {
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _httpClient = widget.httpClient ?? http.Client();
+
     _checkLocationServices(); // Başlangıçta GPS yetkilerini kontrol et
     _fetchMyReportsFromBackend(); // Backend'den harita verilerini çek
   }
@@ -78,7 +92,8 @@ class _MapViewState extends State<MapView> {
       // API uç noktası yapılandırması
       final url = Uri.parse('http://10.0.2.2:8000/api/reports/me');
 
-      final response = await http
+      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
+      final response = await _httpClient
           .get(
             url,
             headers: {
@@ -134,7 +149,10 @@ class _MapViewState extends State<MapView> {
 
   /// Rapor kategorisine göre UI tutarlılığını sağlamak için tasarım sistemindeki ilgili rengi döndürür.
   Color _getCategoryColor(String category) {
-    if (category.contains('Yol Sorunu')) {
+    // GÜNCELLEME: Modelin sorun bulamadığı (NoIssueDetected) durumu yakalayıp gri tonunu döndürür
+    if (category.toLowerCase().contains('tespit edilemedi')) {
+      return AppColors.sorunTespitEdilemedi;
+    } else if (category.contains('Yol Sorunu')) {
       return AppColors.yol;
     } else if (category.contains('Su Sorunu')) {
       return AppColors.su;
@@ -420,6 +438,7 @@ class _MapViewState extends State<MapView> {
           _buildLegendItem("Atık", AppColors.atik),
           _buildLegendItem("Su", AppColors.su),
           _buildLegendItem("Diğer", AppColors.diger),
+          _buildLegendItem("Tespit Yok", AppColors.sorunTespitEdilemedi),
         ],
       ),
     );

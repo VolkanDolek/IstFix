@@ -14,11 +14,14 @@ import 'package:istfix_app/features/report/report_result_view.dart';
 class ReportDraftView extends StatefulWidget {
   final String imagePath; // Fotoğrafın dosya sistemi üzerindeki yolu
   final Position? position; // Fotoğraf çekildiği andaki GPS koordinatları
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir storage eklendi.
+  final FlutterSecureStorage? secureStorage;
 
   const ReportDraftView({
     super.key,
     required this.imagePath,
     required this.position,
+    this.secureStorage,
   });
 
   @override
@@ -93,7 +96,8 @@ class _ReportDraftViewState extends State<ReportDraftView> {
     try {
       final uri = Uri.parse('http://10.0.2.2:8000/api/reports/upload');
 
-      const storage = FlutterSecureStorage();
+      // GÜNCELLEME: Dışarıdan mock storage verildiyse onu, verilmediyse orijinali kullan.
+      final storage = widget.secureStorage ?? const FlutterSecureStorage();
       final token = await storage.read(key: 'access_token') ?? '';
 
       debugPrint("Cihazdaki Token: $token");
@@ -130,24 +134,36 @@ class _ReportDraftViewState extends State<ReportDraftView> {
           // response.body'i JSON'a çeviriyoruz
           final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-          // Kalan mantık tamamen aynı
-          final String detectedCategory =
-              responseData['classification']?['categoryLabel'] ??
-              responseData['writtenDescription'] ??
-              "Bilinmeyen Sorun";
+          // Backend'den dönen categoryLabel ve processingStatus değerlerini alıyoruz
+          final String detectedCategory = responseData['categoryLabel'] ?? "Bilinmeyen Sorun";
+          final String processingStatus = responseData['processingStatus'] ?? "";
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ReportResultView(
-                isSuccess: true,
-                title: "Şikayetiniz gönderildi!",
-                message:
-                    "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
-                category: detectedCategory,
+          // Eğer model sorun bulamadıysa veya mail atılmadıysa "Başarısız" ekranını göster
+          if (detectedCategory == "Sorun Tespit Edilemedi" || processingStatus == "EmailDispatchFailed" || processingStatus == "Rejected") {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReportResultView(
+                  isSuccess: false,
+                  title: "Şikayet Gönderilmedi!",
+                  message: "Yapay zeka fotoğrafta herhangi bir altyapı sorunu tespit edemediği için belediyeye gereksiz bildirim yapılmamıştır.",
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            // AI gerçekten bir sorun bulduysa ve mail atıldıysa "Başarılı" ekranını göster
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportResultView(
+                  isSuccess: true,
+                  title: "Şikayetiniz gönderildi!",
+                  message: "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
+                  category: detectedCategory,
+                ),
+              ),
+            );
+          }
         }
       }
       // --- 2. SUNUCU/ANALİZ HATASI SENARYOSU (500 vb.) ---

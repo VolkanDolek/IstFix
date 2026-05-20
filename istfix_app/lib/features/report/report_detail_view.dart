@@ -10,7 +10,17 @@ import 'package:istfix_app/core/constants/color_constants.dart';
 class ReportDetailView extends StatefulWidget {
   final String reportId; // Detayları çekilecek raporun benzersiz kimliği
 
-  const ReportDetailView({super.key, required this.reportId});
+  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage eklendi.
+  final http.Client? httpClient;
+  final FlutterSecureStorage? secureStorage;
+
+  // GÜNCELLEME: Constructor güncellendi.
+  const ReportDetailView({
+    super.key,
+    required this.reportId,
+    this.httpClient,
+    this.secureStorage,
+  });
 
   @override
   State<ReportDetailView> createState() => _ReportDetailViewState();
@@ -18,13 +28,21 @@ class ReportDetailView extends StatefulWidget {
 
 class _ReportDetailViewState extends State<ReportDetailView> {
   // Kimlik doğrulama verileri ve durum yönetimi değişkenleri
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
+  late final FlutterSecureStorage _secureStorage;
+  // GÜNCELLEME: API istekleri için HTTP istemcisi eklendi.
+  late final http.Client _httpClient;
+
   bool _isLoading = true;
   Map<String, dynamic>? _reportData;
 
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _httpClient = widget.httpClient ?? http.Client();
+
     _fetchReportDetails();
   }
 
@@ -37,7 +55,8 @@ class _ReportDetailViewState extends State<ReportDetailView> {
         'http://10.0.2.2:8000/api/reports/${widget.reportId}',
       );
 
-      final response = await http
+      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
+      final response = await _httpClient
           .get(
             url,
             headers: {
@@ -421,7 +440,7 @@ class _ReportDetailViewState extends State<ReportDetailView> {
           const SizedBox(height: 16),
           const Text(
             "Rapor detayları yüklenemedi.",
-            style: TextStyle(color: AppColors.bogazGecesi, fontSize: 16),
+            style: TextStyle(color: AppColors.tas, fontSize: 16),
           ),
           const SizedBox(height: 16),
           ElevatedButton(

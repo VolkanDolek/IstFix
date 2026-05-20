@@ -11,7 +11,11 @@ import 'package:istfix_app/services/connectivity_service.dart';
 class ConnectivityWrapper extends StatefulWidget {
   final Widget child;
 
-  const ConnectivityWrapper({super.key, required this.child});
+  // GÜNCELLEME: Test için dışarıdan mock servis alabilmek amacıyla eklendi.
+  final ConnectivityService? connectivityService;
+
+  // GÜNCELLEME: Constructor'a connectivityService parametresi eklendi.
+  const ConnectivityWrapper({super.key, required this.child, this.connectivityService});
 
   @override
   State<ConnectivityWrapper> createState() => _ConnectivityWrapperState();
@@ -23,13 +27,16 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
   bool _isGpsEnabled = true;
 
   // Servis ve Abonelik yönetimi
-  final ConnectivityService _connectivityService = ConnectivityService();
+  // GÜNCELLEME: Sınıf içi sabit atama kaldırıldı, late anahtar kelimesi eklendi.
+  late final ConnectivityService _connectivityService;
   StreamSubscription? _connectivitySub;
   StreamSubscription? _gpsSub;
 
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, yoksa orijinal servisi kullan.
+    _connectivityService = widget.connectivityService ?? ConnectivityService();
     _initializeHardwareMonitors();
   }
 

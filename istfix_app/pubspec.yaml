@@ -70,6 +70,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # --- TEST VE MOCK PAKETLERİ ---
+  mockito: ^5.4.4
+  build_runner: ^2.4.8
+
   # YENİ PAKET: İkonları otomatik oluşturmak için
   flutter_launcher_icons: ^0.13.1
 

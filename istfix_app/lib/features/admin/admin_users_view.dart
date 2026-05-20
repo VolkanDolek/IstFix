@@ -6,7 +6,11 @@ import 'package:istfix_app/core/constants/color_constants.dart';
 /// Sistem yöneticilerinin (Admin) kayıtlı tüm vatandaşları görüntülediği,
 /// arama yapabildiği ve gerektiğinde kullanıcı hesaplarını kalıcı olarak sildiği kontrol paneli.
 class AdminUsersView extends StatefulWidget {
-  const AdminUsersView({super.key});
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir servisler eklendi.
+  final Dio? dio;
+  final FlutterSecureStorage? secureStorage;
+
+  const AdminUsersView({super.key, this.dio, this.secureStorage});
 
   @override
   State<AdminUsersView> createState() => _AdminUsersViewState();
@@ -14,8 +18,9 @@ class AdminUsersView extends StatefulWidget {
 
 class _AdminUsersViewState extends State<AdminUsersView> {
   // --- Servis ve Kontrolcü Tanımlamaları ---
-  final Dio _dio = Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
-  final _storage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırıldı, test veya gerçek servisler initState içinde atanacak
+  late final Dio _dio;
+  late final FlutterSecureStorage _storage;
   final TextEditingController _searchController = TextEditingController();
 
   // --- Durum Yönetimi (State Variables) ---
@@ -29,6 +34,10 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse orijinal paketleri kullan
+    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+    _storage = widget.secureStorage ?? const FlutterSecureStorage();
+    
     _fetchUsers();
   }
 
@@ -378,42 +387,78 @@ class _AdminUsersViewState extends State<AdminUsersView> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-
-                                  // Hesap İmha Butonu
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      if (userId.isNotEmpty) {
-                                        _confirmDeleteUser(userId, displayName);
-                                      } else {
-                                        _showErrorSnackBar(
-                                          "Geçersiz işlem: Kullanıcı ID bulunamadı.",
-                                        );
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.shade500,
-                                      shape: RoundedRectangleBorder(
+                                  // GÜNCELLEME: Rol tabanlı imha kısıtlaması katmanı
+                                  // Kart sahibi sivil vatandaş ise silme aksiyonunu sağlayan buton işlenir
+                                  if (!isAdmin)
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        if (userId.isNotEmpty) {
+                                          _confirmDeleteUser(
+                                            userId,
+                                            displayName,
+                                          );
+                                        } else {
+                                          _showErrorSnackBar(
+                                            "Geçersiz işlem: Kullanıcı ID bulunamadı.",
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade500,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.person_remove_rounded,
+                                        size: 18,
+                                        color: Colors.white,
+                                      ),
+                                      label: const Text(
+                                        "Hesabı Sil",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    )
+                                  // Kart sahibi üst düzey yönetici (Admin) ise hiyerarşik güvenliği sağlamak için imha butonu bloke edilir
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 10,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.lock_outline,
+                                            size: 16,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "Silinemez",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      elevation: 0,
                                     ),
-                                    icon: const Icon(
-                                      Icons.person_remove_rounded,
-                                      size: 18,
-                                      color: Colors.white,
-                                    ),
-                                    label: const Text(
-                                      "Hesabı Sil",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
                             ],

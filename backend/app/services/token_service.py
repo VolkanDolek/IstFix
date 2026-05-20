@@ -1,6 +1,6 @@
 # backend/app/services/token_service.py
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.token import BlacklistedToken
 
 def cleanup_expired_tokens(db: Session):
@@ -8,7 +8,8 @@ def cleanup_expired_tokens(db: Session):
     Kara listede bulunan ve üzerinden 24 saat geçmiş token'ları siler.
     """
     # 24 saat öncesinin zamanını hesapla
-    threshold_time = datetime.utcnow() - timedelta(hours=24)
+    # GÜNCELLEME: utcnow() yerine modern timezone-aware now() kullanımı
+    threshold_time = datetime.now(timezone.utc) - timedelta(hours=24)
     
     try:
         # threshold_time'dan daha eski olanları bul ve sil
