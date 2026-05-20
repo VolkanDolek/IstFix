@@ -134,24 +134,36 @@ class _ReportDraftViewState extends State<ReportDraftView> {
           // response.body'i JSON'a çeviriyoruz
           final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-          // Kalan mantık tamamen aynı
-          final String detectedCategory =
-              responseData['classification']?['categoryLabel'] ??
-              responseData['writtenDescription'] ??
-              "Bilinmeyen Sorun";
+          // Backend'den dönen categoryLabel ve processingStatus değerlerini alıyoruz
+          final String detectedCategory = responseData['categoryLabel'] ?? "Bilinmeyen Sorun";
+          final String processingStatus = responseData['processingStatus'] ?? "";
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ReportResultView(
-                isSuccess: true,
-                title: "Şikayetiniz gönderildi!",
-                message:
-                    "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
-                category: detectedCategory,
+          // Eğer model sorun bulamadıysa veya mail atılmadıysa "Başarısız" ekranını göster
+          if (detectedCategory == "Sorun Tespit Edilemedi" || processingStatus == "EmailDispatchFailed" || processingStatus == "Rejected") {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReportResultView(
+                  isSuccess: false,
+                  title: "Şikayet Gönderilmedi!",
+                  message: "Yapay zeka fotoğrafta herhangi bir altyapı sorunu tespit edemediği için belediyeye gereksiz bildirim yapılmamıştır.",
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            // AI gerçekten bir sorun bulduysa ve mail atıldıysa "Başarılı" ekranını göster
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ReportResultView(
+                  isSuccess: true,
+                  title: "Şikayetiniz gönderildi!",
+                  message: "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
+                  category: detectedCategory,
+                ),
+              ),
+            );
+          }
         }
       }
       // --- 2. SUNUCU/ANALİZ HATASI SENARYOSU (500 vb.) ---

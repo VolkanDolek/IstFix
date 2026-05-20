@@ -178,60 +178,68 @@ async def create_report(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Veritabanı kayıt hatası: {str(e)}")
 
-    # 5. Mail Gönderimi
-    email_subject = f"İstFix Resmi Bildirimi: {category_label.upper()} - {municipality_name}"
-    
-    # Mail içeriğini  HTML formatına çevir
-    html_content = f"""
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
-        <h2 style="color: #0b3d6b; border-bottom: 2px solid #3498db; padding-bottom: 10px;">İstFix | Altyapı Sorun Bildirimi</h2>
-        <p>Sayın Yetkili,</p>
-        <p>İstanbul genelinde yürütülen akıllı şehir ve altyapı iyileştirme çalışmaları kapsamında, vatandaşlar tarafından sistemimize bir saha raporu iletilmiştir.</p>
-
-        <div style="background-color: #f9f9f9; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0;">
-            <strong>Sistem Rapor ID:</strong> <span style="font-family: monospace; color: #0b3d6b; font-weight: bold;">{new_report.id}</span><br>
-            <strong>Tespit Edilen Kategori:</strong> {category_label.upper()}<br>
-            <strong>İlgili Belediye:</strong> {municipality_name}<br>
-            <strong>Koordinatlar:</strong> {latitude}, {longitude}<br>
-            <strong>Harita Bağlantısı:</strong> <a href="https://www.google.com/maps?q={latitude},{longitude}" style="color: #3498db; text-decoration: none;">Google Haritalar'da Görüntüle</a><br>
-            <strong>Raporu Gönderen:</strong> {reporter_email}<br>  
-            <strong>Rapor Özeti:</strong> {final_description}
-        </div>
-
-        <p>Ekte, yapay zeka tarafından analiz edilen ve sorunun konumunu/durumunu belgeleyen saha fotoğrafı yer almaktadır.</p>
-        <p>Gereğinin yapılmasını ve sürecin takibi için sistemimize geri bildirimde bulunulmasını arz ederiz.</p>
+    # 5. Mail Gönderimi ve Statü Güncellemesi
+    if category_label != "Sorun Tespit Edilemedi":
+        # Eğer bir sorun bulunduysa mail hazırlığını yap ve gönder
+        email_subject = f"İstFix Resmi Bildirimi: {category_label.upper()} - {municipality_name}"
         
-        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-            <div style="max-width: 600px; margin: 0 auto;">
-                <p style="font-size: 13px; color: #0b3d6b; font-weight: bold; margin-bottom: 5px;">İstFix Akıllı Şehir Raporlama Sistemi</p>
-                <p style="font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 15px;">
-                    Bu e-posta otomatik bir saha raporudur. Kamu yararı amacıyla tasarlanmıştır.
-                </p>
-                <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
-                    Teknik destek için <a href="mailto:istfix.app@gmail.com" style="color: #3498db; text-decoration: none; border-bottom: 1px solid #3498db;">İstFix Teknik Masası</a> ile iletişime geçebilirsiniz.
-                </p>
-            </div>
-        </footer>
-    </div>
-    """
-    
-    print(f"DEBUG: {target_email} adresine mail gönderiliyor...")
-    mail_sent = send_complaint_email(
-        target_email=target_email, # Artık dinamik!
-        subject=email_subject, 
-        content=html_content, 
-        image_path=resized_path
-    )
+        # Mail içeriğini  HTML formatına çevir
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+            <h2 style="color: #0b3d6b; border-bottom: 2px solid #3498db; padding-bottom: 10px;">İstFix | Altyapı Sorun Bildirimi</h2>
+            <p>Sayın Yetkili,</p>
+            <p>İstanbul genelinde yürütülen akıllı şehir ve altyapı iyileştirme çalışmaları kapsamında, vatandaşlar tarafından sistemimize bir saha raporu iletilmiştir.</p>
 
-    if mail_sent:
-        print(f"DEBUG: EmailDelivered to {target_email}.")
-        new_report.processingStatus = "EmailDelivered"
+            <div style="background-color: #f9f9f9; border-left: 5px solid #3498db; padding: 15px; margin: 20px 0;">
+                <strong>Sistem Rapor ID:</strong> <span style="font-family: monospace; color: #0b3d6b; font-weight: bold;">{new_report.id}</span><br>
+                <strong>Tespit Edilen Kategori:</strong> {category_label.upper()}<br>
+                <strong>İlgili Belediye:</strong> {municipality_name}<br>
+                <strong>Koordinatlar:</strong> {latitude}, {longitude}<br>
+                <strong>Harita Bağlantısı:</strong> <a href="https://www.google.com/maps?q={latitude},{longitude}" style="color: #3498db; text-decoration: none;">Google Haritalar'da Görüntüle</a><br>
+                <strong>Raporu Gönderen:</strong> {reporter_email}<br>  
+                <strong>Rapor Özeti:</strong> {final_description}
+            </div>
+
+            <p>Ekte, yapay zeka tarafından analiz edilen ve sorunun konumunu/durumunu belgeleyen saha fotoğrafı yer almaktadır.</p>
+            <p>Gereğinin yapılmasını ve sürecin takibi için sistemimize geri bildirimde bulunulmasını arz ederiz.</p>
+            
+            <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <p style="font-size: 13px; color: #0b3d6b; font-weight: bold; margin-bottom: 5px;">İstFix Akıllı Şehir Raporlama Sistemi</p>
+                    <p style="font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 15px;">
+                        Bu e-posta otomatik bir saha raporudur. Kamu yararı amacıyla tasarlanmıştır.
+                    </p>
+                    <p style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                        Teknik destek için <a href="mailto:istfix.app@gmail.com" style="color: #3498db; text-decoration: none; border-bottom: 1px solid #3498db;">İstFix Teknik Masası</a> ile iletişime geçebilirsiniz.
+                    </p>
+                </div>
+            </footer>
+        </div>
+        """
+        
+        print(f"DEBUG: {target_email} adresine mail gönderiliyor...")
+        mail_sent = send_complaint_email(
+            target_email=target_email, # Artık dinamik!
+            subject=email_subject, 
+            content=html_content, 
+            image_path=resized_path
+        )
+
+        if mail_sent:
+            print(f"DEBUG: EmailDelivered to {target_email}.")
+            new_report.processingStatus = "EmailDelivered"
+        else:
+            new_report.processingStatus = "EmailDispatchFailed"
+            
     else:
+        # model bir sorun bulamadıysa e-posta gönderme sürecini atla ve raporu reddet
+        print("DEBUG: Fotoğrafta bir sorun tespit edilemediği için belediyeye mail gönderilmedi.")
         new_report.processingStatus = "EmailDispatchFailed"
     
+    # Her iki durumda da raporu (başarılı veya reddedildi statüsüyle) veritabanına kaydet
     db.commit()
 
-    # (Opsiyonel) Mail gittikten sonra thumbnail dosyası silebiliriz, çünkü artık ihtiyacımız kalmaz. 
+    # (Opsiyonel) İşlem bittikten sonra thumbnail dosyası silebiliriz, çünkü artık ihtiyacımız kalmaz. 
     # Orijinal dosya DB'de kalmaya devam eder.
     if os.path.exists(resized_path) and resized_path != original_path:
         os.remove(resized_path)
