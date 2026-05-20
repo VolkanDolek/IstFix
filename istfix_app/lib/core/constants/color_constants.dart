@@ -16,6 +16,9 @@ class AppColors {
   static const Color su = Color(0xFF3498DB);
   static const Color atik = Color(0xFF14EB00);
   static const Color diger = Color(0xFFE67E22);
+  static const Color sorunTespitEdilemedi = Color(
+    0xFF95A5A6,
+  ); // Sorun bulunamadı / tespit edilemedi
 
   // Durum (Status) Renkleri - Raporlama durum göstergelerinde
   static const Color durumIletildi = Color(0xFF2EBA1F);

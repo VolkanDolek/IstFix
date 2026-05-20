@@ -7,7 +7,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:istfix_app/features/report/report_draft_view.dart';
-import 'package:istfix_app/features/report/report_result_view.dart';
 
 @GenerateNiceMocks([MockSpec<FlutterSecureStorage>()])
 import 'report_draft_view_test.mocks.dart';
@@ -17,20 +16,30 @@ void main() {
 
   setUp(() {
     mockSecureStorage = MockFlutterSecureStorage();
-    when(mockSecureStorage.read(key: anyNamed('key')))
-        .thenAnswer((_) async => 'sahte_token');
+    when(
+      mockSecureStorage.read(key: anyNamed('key')),
+    ).thenAnswer((_) async => 'sahte_token');
   });
 
   // Basit bir test konumu
   final mockPosition = Position(
-    latitude: 41.0, longitude: 29.0, timestamp: DateTime.now(),
-    accuracy: 0, altitude: 0, altitudeAccuracy: 0, heading: 0, headingAccuracy: 0, speed: 0, speedAccuracy: 0,
+    latitude: 41.0,
+    longitude: 29.0,
+    timestamp: DateTime.now(),
+    accuracy: 0,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
   );
 
   Widget createWidgetUnderTest() {
     return MaterialApp(
       home: ReportDraftView(
-        imagePath: 'test_image.jpg', // Test dosya yolu (dosya sisteminde olmasına gerek yok, widget için yeterli)
+        imagePath:
+            'test_image.jpg', // Test dosya yolu (dosya sisteminde olmasına gerek yok, widget için yeterli)
         position: mockPosition,
         secureStorage: mockSecureStorage,
       ),
@@ -38,7 +47,9 @@ void main() {
   }
 
   group('ReportDraftView Widget Testleri', () {
-    testWidgets('Sayfa yüklendiğinde gerekli UI elemanları görünmelidir', (tester) async {
+    testWidgets('Sayfa yüklendiğinde gerekli UI elemanları görünmelidir', (
+      tester,
+    ) async {
       await tester.pumpWidget(createWidgetUnderTest());
       await tester.pumpAndSettle();
 
@@ -48,13 +59,16 @@ void main() {
       expect(find.text("Gönder"), findsOneWidget);
     });
 
-    testWidgets('Gönder butonuna tıklandığında açıklama yazısı eklenebilmelidir', (tester) async {
-      await tester.pumpWidget(createWidgetUnderTest());
-      
-      final descriptionField = find.byType(TextField);
-      await tester.enterText(descriptionField, "Burada bir sorun var!");
-      
-      expect(find.text("Burada bir sorun var!"), findsOneWidget);
-    });
+    testWidgets(
+      'Gönder butonuna tıklandığında açıklama yazısı eklenebilmelidir',
+      (tester) async {
+        await tester.pumpWidget(createWidgetUnderTest());
+
+        final descriptionField = find.byType(TextField);
+        await tester.enterText(descriptionField, "Burada bir sorun var!");
+
+        expect(find.text("Burada bir sorun var!"), findsOneWidget);
+      },
+    );
   });
 }

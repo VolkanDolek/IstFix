@@ -126,7 +126,14 @@ class _ReportListViewState extends State<ReportListView> {
   /// Gelen kategori ismini analiz ederek, tasarım standartlarına uygun renk ve SVG ikon yolunu belirler.
   Map<String, dynamic> _getCategoryStyles(String category) {
     final String cat = category.toLowerCase();
-    if (cat.contains('yol')) {
+
+    // GÜNCELLEME: Modelin sorun bulamadığı kategori senaryosu yakalanır
+    if (cat.contains('tespit edilemedi')) {
+      return {
+        'color': AppColors.sorunTespitEdilemedi,
+        'iconPath': 'assets/icons/ic_image_question.svg',
+      };
+    } else if (cat.contains('yol')) {
       return {'color': AppColors.yol, 'iconPath': 'assets/icons/ic_road.svg'};
     } else if (cat.contains('su')) {
       return {
@@ -202,13 +209,15 @@ class _ReportListViewState extends State<ReportListView> {
       final url = Uri.parse('http://10.0.2.2:8000/api/reports/me');
 
       // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
-      final response = await _httpClient.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await _httpClient
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);

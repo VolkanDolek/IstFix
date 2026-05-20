@@ -37,7 +37,7 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   // Harita kamera hareketlerini kontrol eden yönetici nesne
   final MapController _mapController = MapController();
-  
+
   // Yerel veri güvenliği için depolama yöneticisi
   // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
   late final FlutterSecureStorage _secureStorage;
@@ -149,7 +149,10 @@ class _MapViewState extends State<MapView> {
 
   /// Rapor kategorisine göre UI tutarlılığını sağlamak için tasarım sistemindeki ilgili rengi döndürür.
   Color _getCategoryColor(String category) {
-    if (category.contains('Yol Sorunu')) {
+    // GÜNCELLEME: Modelin sorun bulamadığı (NoIssueDetected) durumu yakalayıp gri tonunu döndürür
+    if (category.toLowerCase().contains('tespit edilemedi')) {
+      return AppColors.sorunTespitEdilemedi;
+    } else if (category.contains('Yol Sorunu')) {
       return AppColors.yol;
     } else if (category.contains('Su Sorunu')) {
       return AppColors.su;
@@ -435,6 +438,7 @@ class _MapViewState extends State<MapView> {
           _buildLegendItem("Atık", AppColors.atik),
           _buildLegendItem("Su", AppColors.su),
           _buildLegendItem("Diğer", AppColors.diger),
+          _buildLegendItem("Tespit Yok", AppColors.sorunTespitEdilemedi),
         ],
       ),
     );

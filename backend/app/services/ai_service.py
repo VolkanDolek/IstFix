@@ -87,7 +87,12 @@ def generate_complaint_text(category_label: str) -> str:
     Karşılaştığın bir altyapı sorunu için belediyeye resmi bir şikayet metni yazıyorsun.
     
     Tespit edilen '{category_label}' sorunu ile ilgili belediyeye iletilmek üzere en fazla 1-2 cümlelik, çok kısa ve resmi bir Türkçe şikayet metni oluştur. 
-    Lütfen sadece sorunu bildiren ve müdahale talep eden bu cümleleri yaz; selamlama, başlık, tarih, isim veya ekstra hiçbir kelime kesinlikle ekleme.
+    
+    KESİN KURALLAR:
+    1. Sadece sorunu bildiren ve müdahale talep eden temel cümleleri yaz.
+    2. Selamlama, başlık, tarih, saygı sözcükleri, isim veya ekstra hiçbir kelime KESİNLİKLE EKLEME.
+    3. Metin içerisinde KESİNLİKLE köşeli parantez, yer tutucu veya boşluk doldurma ifadeleri (Örn: [Sokak Adı], [Mahalle], [Belirtilmeyen Konum] vb.) KULLANMA.
+    4. Metin, konumdan bağımsız olarak doğrudan soruna odaklanan, jenerik ve kendi başına tam bir cümle olmalıdır.
     """
 
     try:

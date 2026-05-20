@@ -16,7 +16,7 @@ class ReportDetailView extends StatefulWidget {
 
   // GÜNCELLEME: Constructor güncellendi.
   const ReportDetailView({
-    super.key, 
+    super.key,
     required this.reportId,
     this.httpClient,
     this.secureStorage,
@@ -42,7 +42,7 @@ class _ReportDetailViewState extends State<ReportDetailView> {
     // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
     _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
     _httpClient = widget.httpClient ?? http.Client();
-    
+
     _fetchReportDetails();
   }
 
@@ -440,7 +440,7 @@ class _ReportDetailViewState extends State<ReportDetailView> {
           const SizedBox(height: 16),
           const Text(
             "Rapor detayları yüklenemedi.",
-            style: TextStyle(color: AppColors.bogazGecesi, fontSize: 16),
+            style: TextStyle(color: AppColors.tas, fontSize: 16),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
