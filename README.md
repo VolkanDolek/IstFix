@@ -35,7 +35,7 @@ This project was developed as a Graduation Design Project for COMP/SOFT 4902/491
 
 ## Key Features
 
-- **Automatic Photo Classification** — YOLOv8 model trained on a custom Roboflow dataset, supporting 5 issue categories: road damage, street lighting failure, waste management, water and drainage, and a general "other" category
+- **Automatic Photo Classification** — YOLOv8 model trained on a custom augmented Roboflow dataset, detecting 11 distinct urban object classes grouped under 5 main issue categories: **Road Issue** (`pothole`), **Water Issue** (`puddle`, `manhole`), **Environmental Pollution** (`garbage`, `garbage-bin`), **Lighting Issue** (`street-light`), and **Other Issues** (`bench`, `cat`, `dog`, `traffic-light`, `traffic-sign`).
 - **GPS-Based Municipality Detection** — Geopy and Nominatim reverse geocoding pipeline that maps precise coordinates to one of Istanbul's 40 municipal authorities
 - **Dynamic Complaint Generation** — Gemini API produces a formal, context-aware complaint text on every submission, replacing rigid rule-based templates entirely
 - **Automated Email Dispatch** — SendGrid SMTP integration with an exponential backoff retry mechanism (up to 3 attempts before permanent failure logging)
@@ -51,15 +51,18 @@ IstFix uses a custom-trained **YOLOv8 (Ultralytics)** classification model embed
 **Issue Categories:**
 
 | Label | Description |
-|-------|-------------|
-| `road_damage` | Potholes, broken pavement, cracked sidewalks |
-| `broken_streetlight` | Non-functional or damaged street lighting |
-| `overflowing_bin` | Waste management and overflowing rubbish bins |
-| `illegal_dumping` | Unauthorized waste disposal |
-| `water_leak` | Water leaks, drainage blockages, flooding |
-| `other` | General infrastructure issues |
-
-**Confidence Threshold:** `80%` — classifications below this threshold trigger an error screen prompting the user to retake the photo with better framing or lighting.
+| :--- | :--- |
+| `bench` | Other Issues (Street bench) |
+| `cat` | Other Issues (Stray cat) |
+| `dog` | Other Issues (Stray dog) |
+| `garbage` | Environmental Pollution (Uncollected trash or litter) |
+| `garbage-bin` | Environmental Pollution (Garbage container) |
+| `manhole` | Water Issue (Manhole cover) |
+| `pothole` | Road Issue (Road damage or pothole) |
+| `puddle` | Water Issue (Water accumulation) |
+| `street-light` | Lighting Issue (Street lighting pole) |
+| `traffic-light` | Other Issues (Traffic light) |
+| `traffic-sign` | Other Issues (Traffic sign) |
 
 ---
 
@@ -85,7 +88,6 @@ The following non-functional requirements are defined in the SDD and verified th
 | End-to-end report processing | 10 seconds under 4G | Automated performance test on a reference device |
 | Reverse geocoding response | 3 seconds | API timeout simulation in integration tests |
 | Map rendering (200 markers) | 5 seconds | Load test with 200 seeded reports |
-| ML classification accuracy | 80% | Per-class confusion matrix on held-out test set |
 | First-time user report submission | 3 minutes | Structured walkthrough with at least 3 first-time users |
 
 ---
