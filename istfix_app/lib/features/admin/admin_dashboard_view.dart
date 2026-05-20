@@ -8,7 +8,17 @@ import 'package:istfix_app/features/auth/welcome_view.dart';
 /// Sistem yöneticilerinin (Admin) gelen tüm raporları görüntülediği,
 /// arama/filtreleme yapabildiği ve rapor durumlarını yönettiği ana kontrol paneli.
 class AdminDashboardView extends StatefulWidget {
-  const AdminDashboardView({super.key});
+  // GÜNCELLEME: Test edilebilirliği sağlamak için dışarıdan mocklanabilir servisler eklendi.
+  final Dio? dio;
+  final FlutterSecureStorage? secureStorage;
+  final AuthService? authService;
+
+  const AdminDashboardView({
+    super.key,
+    this.dio,
+    this.secureStorage,
+    this.authService,
+  });
 
   @override
   State<AdminDashboardView> createState() => _AdminDashboardViewState();
@@ -16,9 +26,10 @@ class AdminDashboardView extends StatefulWidget {
 
 class _AdminDashboardViewState extends State<AdminDashboardView> {
   // --- Servis ve Kontrolcü Tanımlamaları ---
-  final Dio _dio = Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
-  final _storage = const FlutterSecureStorage();
-  final AuthService _authService = AuthService();
+  // GÜNCELLEME: Sabit tanımlamalar yerine 'late final' yapıldı ki initState içinde test veya gerçek objeler atanabilsin.
+  late final Dio _dio;
+  late final FlutterSecureStorage _storage;
+  late final AuthService _authService;
   final TextEditingController _searchController = TextEditingController();
 
   // --- Durum Yönetimi (State Variables) ---
@@ -74,6 +85,12 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
   @override
   void initState() {
     super.initState();
+    
+    // GÜNCELLEME: Dışarıdan verilmiş (mock) servis varsa onları, yoksa orijinal servisleri başlatıyoruz.
+    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+    _storage = widget.secureStorage ?? const FlutterSecureStorage();
+    _authService = widget.authService ?? AuthService();
+
     _fetchReports(); // Sayfa yüklendiğinde verileri getir
   }
 
@@ -408,7 +425,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                                         ),
                                         const SizedBox(width: 6),
                                         Expanded(
-                                          child: Text(
+                                            child: Text(
                                             category,
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
@@ -552,7 +569,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: const Color(
                                             0xFFC8973A,
-                                          ),
+                                        ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
                                               8,

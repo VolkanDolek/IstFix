@@ -34,7 +34,12 @@ class ReportListItem {
 
 /// Kullanıcının daha önce sisteme ilettiği ihbarları liste halinde sunan görünüm sınıfı.
 class ReportListView extends StatefulWidget {
-  const ReportListView({super.key});
+  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage bağımlılıkları eklendi.
+  final http.Client? httpClient;
+  final FlutterSecureStorage? secureStorage;
+
+  // GÜNCELLEME: Constructor'a httpClient ve secureStorage parametreleri eklendi.
+  const ReportListView({super.key, this.httpClient, this.secureStorage});
 
   @override
   State<ReportListView> createState() => _ReportListViewState();
@@ -42,7 +47,11 @@ class ReportListView extends StatefulWidget {
 
 class _ReportListViewState extends State<ReportListView> {
   // Yerel veri güvenliği için depolama yöneticisi
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
+  late final FlutterSecureStorage _secureStorage;
+
+  // GÜNCELLEME: API istekleri için kullanılacak HTTP istemcisi eklendi.
+  late final http.Client _httpClient;
 
   // Arayüzde listelenecek raporların tutulduğu koleksiyon
   List<ReportListItem> _reports = [];
@@ -70,6 +79,10 @@ class _ReportListViewState extends State<ReportListView> {
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _httpClient = widget.httpClient ?? http.Client();
+
     // Görünüm belleğe yüklendiğinde asenkron veri çekme işlemi başlatılır
     _fetchReports();
   }
@@ -188,15 +201,14 @@ class _ReportListViewState extends State<ReportListView> {
       final token = await _getToken();
       final url = Uri.parse('http://10.0.2.2:8000/api/reports/me');
 
-      final response = await http
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
+      final response = await _httpClient.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);

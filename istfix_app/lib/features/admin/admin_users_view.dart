@@ -6,7 +6,11 @@ import 'package:istfix_app/core/constants/color_constants.dart';
 /// Sistem yöneticilerinin (Admin) kayıtlı tüm vatandaşları görüntülediği,
 /// arama yapabildiği ve gerektiğinde kullanıcı hesaplarını kalıcı olarak sildiği kontrol paneli.
 class AdminUsersView extends StatefulWidget {
-  const AdminUsersView({super.key});
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir servisler eklendi.
+  final Dio? dio;
+  final FlutterSecureStorage? secureStorage;
+
+  const AdminUsersView({super.key, this.dio, this.secureStorage});
 
   @override
   State<AdminUsersView> createState() => _AdminUsersViewState();
@@ -14,8 +18,9 @@ class AdminUsersView extends StatefulWidget {
 
 class _AdminUsersViewState extends State<AdminUsersView> {
   // --- Servis ve Kontrolcü Tanımlamaları ---
-  final Dio _dio = Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
-  final _storage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırıldı, test veya gerçek servisler initState içinde atanacak
+  late final Dio _dio;
+  late final FlutterSecureStorage _storage;
   final TextEditingController _searchController = TextEditingController();
 
   // --- Durum Yönetimi (State Variables) ---
@@ -29,6 +34,10 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse orijinal paketleri kullan
+    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+    _storage = widget.secureStorage ?? const FlutterSecureStorage();
+    
     _fetchUsers();
   }
 

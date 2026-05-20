@@ -23,7 +23,12 @@ class MyReport {
 /// Kullanıcının kendi konumunu ve gönderdiği ihbarları interaktif bir harita (OpenStreetMap)
 /// üzerinde görüntülemesini sağlayan ana görünüm sınıfı.
 class MapView extends StatefulWidget {
-  const MapView({super.key});
+  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage bağımlılıkları eklendi.
+  final http.Client? httpClient;
+  final FlutterSecureStorage? secureStorage;
+
+  // GÜNCELLEME: Constructor'a httpClient ve secureStorage parametreleri eklendi.
+  const MapView({super.key, this.httpClient, this.secureStorage});
 
   @override
   State<MapView> createState() => _MapViewState();
@@ -32,8 +37,13 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   // Harita kamera hareketlerini kontrol eden yönetici nesne
   final MapController _mapController = MapController();
+  
   // Yerel veri güvenliği için depolama yöneticisi
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
+  late final FlutterSecureStorage _secureStorage;
+
+  // GÜNCELLEME: API istekleri için kullanılacak HTTP istemcisi eklendi.
+  late final http.Client _httpClient;
 
   // Konum alınamadığı durumlarda kullanılacak varsayılan başlangıç noktası (İstanbul Merkezi)
   final LatLng _istanbulCenter = const LatLng(41.0082, 28.9784);
@@ -52,7 +62,10 @@ class _MapViewState extends State<MapView> {
   @override
   void initState() {
     super.initState();
-    // GPS Güvenlik MainTabView'da geçildiği için burada direkt işlemlere başlayabiliriz
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _httpClient = widget.httpClient ?? http.Client();
+
     _checkLocationServices(); // Başlangıçta GPS yetkilerini kontrol et
     _fetchMyReportsFromBackend(); // Backend'den harita verilerini çek
   }
@@ -79,7 +92,8 @@ class _MapViewState extends State<MapView> {
       // API uç noktası yapılandırması
       final url = Uri.parse('http://10.0.2.2:8000/api/reports/me');
 
-      final response = await http
+      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
+      final response = await _httpClient
           .get(
             url,
             headers: {
@@ -87,8 +101,9 @@ class _MapViewState extends State<MapView> {
               'Authorization': 'Bearer $token',
             },
           )
-          // Sunucu yanıt vermezse 5 saniye içinde zaman aşımına uğratır
-          .timeout(const Duration(seconds: 5));
+          .timeout(
+            const Duration(seconds: 5),
+          ); // Sunucu yanıt vermezse 5 saniye içinde zaman aşımına uğratır
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -116,10 +131,17 @@ class _MapViewState extends State<MapView> {
           });
         }
       } else {
+        debugPrint("Sunucu hatası: ${response.statusCode}");
         if (mounted) setState(() => _myReports = []);
       }
     } catch (e) {
-      if (mounted) setState(() => _myReports = []);
+      debugPrint("Veri çekme sırasında hata oluştu: $e");
+      // Hata durumunda, ekranda tutarsız veri görünmemesi için liste temizlenir
+      if (mounted) {
+        setState(() {
+          _myReports = [];
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoadingReports = false);
     }
@@ -141,14 +163,17 @@ class _MapViewState extends State<MapView> {
 
   /// Cihazın donanımsal konum servislerinin durumunu ve uygulamanın konum izinlerini denetler.
   Future<void> _checkLocationServices() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) setState(() => _isGpsEnabled = false);
       return;
     }
     if (mounted) setState(() => _isGpsEnabled = true);
 
-    LocationPermission permission = await Geolocator.checkPermission();
+    permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -230,7 +255,7 @@ class _MapViewState extends State<MapView> {
                           40, // Tıklama alanını ve gölgeyi rahat kapsayacak boyut
                       height: 40,
                       child: GestureDetector(
-                        /// İlgili pine tıklandığında detay sayfasına yönlendirilir
+                        // GÜNCELLEME: İlgili pine tıklandığında detay sayfasına yönlendirilir
                         onTap: () {
                           Navigator.push(
                             context,
@@ -289,7 +314,7 @@ class _MapViewState extends State<MapView> {
                       height: 24,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.halicAcigi.withOpacity(0.9),
+                          color: Colors.blueAccent,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                           boxShadow: [

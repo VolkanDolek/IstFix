@@ -14,11 +14,14 @@ import 'package:istfix_app/features/report/report_result_view.dart';
 class ReportDraftView extends StatefulWidget {
   final String imagePath; // Fotoğrafın dosya sistemi üzerindeki yolu
   final Position? position; // Fotoğraf çekildiği andaki GPS koordinatları
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir storage eklendi.
+  final FlutterSecureStorage? secureStorage;
 
   const ReportDraftView({
     super.key,
     required this.imagePath,
     required this.position,
+    this.secureStorage,
   });
 
   @override
@@ -93,7 +96,8 @@ class _ReportDraftViewState extends State<ReportDraftView> {
     try {
       final uri = Uri.parse('http://10.0.2.2:8000/api/reports/upload');
 
-      const storage = FlutterSecureStorage();
+      // GÜNCELLEME: Dışarıdan mock storage verildiyse onu, verilmediyse orijinali kullan.
+      final storage = widget.secureStorage ?? const FlutterSecureStorage();
       final token = await storage.read(key: 'access_token') ?? '';
 
       debugPrint("Cihazdaki Token: $token");

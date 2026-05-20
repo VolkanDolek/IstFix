@@ -5,7 +5,11 @@ import 'package:istfix_app/features/admin/municipality_management_view.dart';
 import 'package:istfix_app/features/admin/admin_users_view.dart';
 
 class AdminMainTabView extends StatefulWidget {
-  const AdminMainTabView({super.key});
+  // GÜNCELLEME: Test ortamı için dışarıdan sahte (mock) sayfalar verilmesine olanak sağlandı.
+  final List<Widget>? mockPages;
+
+  // GÜNCELLEME: Constructor güncellendi.
+  const AdminMainTabView({super.key, this.mockPages});
 
   @override
   State<AdminMainTabView> createState() => _AdminMainTabViewState();
@@ -15,11 +19,19 @@ class _AdminMainTabViewState extends State<AdminMainTabView> {
   int _currentIndex = 0;
 
   // Admin sekmelerinin listesi
-  final List<Widget> _adminPages = [
-    const AdminDashboardView(), // Sekme 0: Tüm Raporların Listesi
-    const MunicipalityManagementView(), // Sekme 1: Belediye Ekleme/Düzenleme
-    const AdminUsersView(), // Sekme 2: Kullanıcı (Vatandaş) Yönetimi
-  ];
+  // GÜNCELLEME: Sayfaların durumunu test/gerçek senaryoya göre başlatmak için 'late final' yapıldı.
+  late final List<Widget> _adminPages;
+
+  // GÜNCELLEME: Sayfa yüklenirken dışarıdan verilmiş sayfalar varsa onları, yoksa orijinalini kullanıyoruz.
+  @override
+  void initState() {
+    super.initState();
+    _adminPages = widget.mockPages ?? [
+      const AdminDashboardView(), // Sekme 0: Tüm Raporların Listesi
+      const MunicipalityManagementView(), // Sekme 1: Belediye Ekleme/Düzenleme
+      const AdminUsersView(), // Sekme 2: Kullanıcı (Vatandaş) Yönetimi
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {

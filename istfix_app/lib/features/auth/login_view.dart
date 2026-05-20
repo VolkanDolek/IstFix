@@ -9,7 +9,11 @@ import 'package:istfix_app/services/auth_service.dart';
 
 /// Kullanıcı kimlik doğrulama süreçlerini yöneten görünüm katmanı.
 class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+  // GÜNCELLEME: Test için dışarıdan mock servis alabilmek amacıyla eklendi.
+  final AuthService? authService;
+
+  // GÜNCELLEME: Constructor'a authService parametresi eklendi.
+  const LoginView({super.key, this.authService});
 
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -19,12 +23,21 @@ class _LoginViewState extends State<LoginView> {
   // Form denetleyicileri ve servisler
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final AuthService _authService = AuthService();
+  
+  // GÜNCELLEME: Sınıf içi sabit atama kaldırıldı, late anahtar kelimesi eklendi.
+  late final AuthService _authService;
 
   // Durum değişkenleri
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   bool _rememberMe = false;
+
+  // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, yoksa orijinal servisi kullan.
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthService();
+  }
 
   /// Mevcut kullanıcı bilgilerini sisteme gönderir ve doğrular.
   Future<void> _handleLogin() async {
