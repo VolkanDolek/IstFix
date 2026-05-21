@@ -135,18 +135,24 @@ class _ReportDraftViewState extends State<ReportDraftView> {
           final Map<String, dynamic> responseData = jsonDecode(response.body);
 
           // Backend'den dönen categoryLabel ve processingStatus değerlerini alıyoruz
-          final String detectedCategory = responseData['categoryLabel'] ?? "Bilinmeyen Sorun";
-          final String processingStatus = responseData['processingStatus'] ?? "";
+          final String detectedCategory =
+              responseData['classification']?['categoryLabel'] ??
+              "Bilinmeyen Sorun";
+          final String processingStatus =
+              responseData['processingStatus'] ?? "";
 
           // Eğer model sorun bulamadıysa veya mail atılmadıysa "Başarısız" ekranını göster
-          if (detectedCategory == "Sorun Tespit Edilemedi" || processingStatus == "EmailDispatchFailed" || processingStatus == "Rejected") {
+          if (detectedCategory == "Sorun Tespit Edilemedi" ||
+              processingStatus == "EmailDispatchFailed" ||
+              processingStatus == "Rejected") {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => const ReportResultView(
                   isSuccess: false,
                   title: "Şikayet Gönderilmedi!",
-                  message: "Yapay zeka fotoğrafta herhangi bir altyapı sorunu tespit edemediği için belediyeye gereksiz bildirim yapılmamıştır.",
+                  message:
+                      "Yapay zeka fotoğrafta herhangi bir altyapı sorunu tespit edemediği için belediyeye gereksiz bildirim yapılmamıştır.",
                 ),
               ),
             );
@@ -158,7 +164,8 @@ class _ReportDraftViewState extends State<ReportDraftView> {
                 builder: (context) => ReportResultView(
                   isSuccess: true,
                   title: "Şikayetiniz gönderildi!",
-                  message: "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
+                  message:
+                      "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
                   category: detectedCategory,
                 ),
               ),
