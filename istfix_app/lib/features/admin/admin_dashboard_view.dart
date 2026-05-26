@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API eklendi
 import 'package:istfix_app/services/auth_service.dart';
 import 'package:istfix_app/features/auth/welcome_view.dart';
 
@@ -85,9 +86,9 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
   @override
   void initState() {
     super.initState();
-    
-    // GÜNCELLEME: Dışarıdan verilmiş (mock) servis varsa onları, yoksa orijinal servisleri başlatıyoruz.
-    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+
+    // GÜNCELLEME: Dışarıdan verilmiş (mock) servis varsa onları, yoksa merkezi ApiClient'ı (orijinal servisleri) başlatıyoruz.
+    _dio = widget.dio ?? ApiClient().dio; // Merkezi kalkan devreye alındı
     _storage = widget.secureStorage ?? const FlutterSecureStorage();
     _authService = widget.authService ?? AuthService();
 
@@ -208,10 +209,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text(
-              "Kalıcı Olarak Sil",
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text("Sil", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -425,7 +423,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                                         ),
                                         const SizedBox(width: 6),
                                         Expanded(
-                                            child: Text(
+                                          child: Text(
                                             category,
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
@@ -569,7 +567,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: const Color(
                                             0xFFC8973A,
-                                        ),
+                                          ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
                                               8,

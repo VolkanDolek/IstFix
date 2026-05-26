@@ -61,12 +61,20 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # 1. Kullanıcıyı bul (OAuth2 form_data.username bekler, biz oraya email gireceğiz)
     citizen = db.query(Citizen).filter(Citizen.emailAddress == form_data.username).first()
     
-    # 2. Güvenlik kontrolleri
+    # 2. Güvenlik kontrolleri (E-posta veritabanında var mı?)
     if not citizen:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Email veya şifre hatalı.",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # GÜNCELLEME: SİLİNMİŞ (PASİFE ALINMIŞ) KULLANICI BLOKESİ (SOFT DELETE)
+    # Şifre doğru olsa bile, eğer hesap admin tarafından silinmişse (arşivlenmişse) erişimi kes!
+    if not citizen.isActive:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hesabınız sistem yöneticisi tarafından silinmiş veya kullanıma kapatılmıştır."
         )
 
     # A. Hesap şu an kilitli mi kontrol et (GÜNCELLENEN KISIM)

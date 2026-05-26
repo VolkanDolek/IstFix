@@ -10,10 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/features/admin/admin_users_view.dart';
 
 // NiceMocks ile eksik metodlarda uygulamanın çökmesini engelliyoruz
-@GenerateNiceMocks([
-  MockSpec<Dio>(),
-  MockSpec<FlutterSecureStorage>(),
-])
+@GenerateNiceMocks([MockSpec<Dio>(), MockSpec<FlutterSecureStorage>()])
 import 'admin_users_view_test.mocks.dart';
 
 void main() {
@@ -25,16 +22,14 @@ void main() {
     mockSecureStorage = MockFlutterSecureStorage();
 
     // Sahte bir admin token'ı döndür
-    when(mockSecureStorage.read(key: anyNamed('key')))
-        .thenAnswer((_) async => 'sahte_admin_token');
+    when(
+      mockSecureStorage.read(key: anyNamed('key')),
+    ).thenAnswer((_) async => 'sahte_admin_token');
   });
 
   Widget createWidgetUnderTest() {
     return MaterialApp(
-      home: AdminUsersView(
-        dio: mockDio,
-        secureStorage: mockSecureStorage,
-      ),
+      home: AdminUsersView(dio: mockDio, secureStorage: mockSecureStorage),
     );
   }
 
@@ -48,104 +43,142 @@ void main() {
   }
 
   group('AdminUsersView Widget Testleri', () {
-    testWidgets('Sayfa açıldığında API den kullanıcılar çekilmeli ve ekrana çizilmelidir', (tester) async {
-      final mockUsers = [
-        {
-          "id": "USR-1001",
-          "name": "Ahmet Yılmaz",
-          "emailAddress": "ahmet@mail.com",
-          "isAdmin": false
-        },
-        {
-          "id": "USR-1002",
-          "name": "Zeynep Demir",
-          "emailAddress": "zeynep@mail.com",
-          "isAdmin": true
-        }
-      ];
+    testWidgets(
+      'Sayfa açıldığında API den kullanıcılar çekilmeli ve ekrana çizilmelidir',
+      (tester) async {
+        final mockUsers = [
+          {
+            "id": "USR-1001",
+            "name": "Ahmet Yılmaz",
+            "emailAddress": "ahmet@mail.com",
+            "isAdmin": false,
+          },
+          {
+            "id": "USR-1002",
+            "name": "Zeynep Demir",
+            "emailAddress": "zeynep@mail.com",
+            "isAdmin": true,
+          },
+        ];
 
-      when(mockDio.get(any, options: anyNamed('options')))
-          .thenAnswer((_) async => _createMockResponse(mockUsers, 200));
+        when(
+          mockDio.get(any, options: anyNamed('options')),
+        ).thenAnswer((_) async => _createMockResponse(mockUsers, 200));
 
-      await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle(); 
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pumpAndSettle();
 
-      expect(find.text('Ahmet Yılmaz'), findsOneWidget);
-      expect(find.text('ahmet@mail.com'), findsOneWidget);
-      
-      expect(find.text('Zeynep Demir'), findsOneWidget);
-      expect(find.text('ADMİN'), findsOneWidget);
-    });
+        expect(find.text('Ahmet Yılmaz'), findsOneWidget);
+        expect(find.text('ahmet@mail.com'), findsOneWidget);
+
+        expect(find.text('Zeynep Demir'), findsOneWidget);
+        expect(find.text('ADMİN'), findsOneWidget);
+      },
+    );
 
     // YENİ EKLENEN TEST SENARYOSU
-    testWidgets('Admin olan kullanıcılarda silme butonu gizlenmeli ve Silinemez etiketi çıkmalıdır', (tester) async {
-      // 1. HAZIRLIK: 1 normal, 1 admin kullanıcı gelsin
-      final mockUsers = [
-        {"id": "USR-1", "name": "Normal Vatandaş", "isAdmin": false},
-        {"id": "USR-2", "name": "Sistem Yöneticisi", "isAdmin": true}
-      ];
+    testWidgets(
+      'Admin olan kullanıcılarda silme butonu gizlenmeli ve Silinemez etiketi çıkmalıdır',
+      (tester) async {
+        // 1. HAZIRLIK: 1 normal, 1 admin kullanıcı gelsin
+        final mockUsers = [
+          {"id": "USR-1", "name": "Normal Vatandaş", "isAdmin": false},
+          {"id": "USR-2", "name": "Sistem Yöneticisi", "isAdmin": true},
+        ];
 
-      when(mockDio.get(any, options: anyNamed('options')))
-          .thenAnswer((_) async => _createMockResponse(mockUsers, 200));
+        when(
+          mockDio.get(any, options: anyNamed('options')),
+        ).thenAnswer((_) async => _createMockResponse(mockUsers, 200));
 
-      await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pumpAndSettle();
 
-      // 2. DOĞRULAMA
-      // Ekranda sadece 1 tane "Hesabı Sil" butonu olmalı (O da Normal Vatandaş için)
-      expect(find.widgetWithText(ElevatedButton, 'Hesabı Sil'), findsOneWidget);
-      
-      // Ekranda 1 tane "Silinemez" yazısı olmalı (O da Sistem Yöneticisi için)
-      expect(find.text('Silinemez'), findsOneWidget);
-      
-      // Ayrıca kilit ikonunun da ekranda olduğunu doğrulayalım
-      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
-    });
+        // 2. DOĞRULAMA
+        // Ekranda sadece 1 tane "Hesabı Sil" butonu olmalı (O da Normal Vatandaş için)
+        expect(
+          find.widgetWithText(ElevatedButton, 'Hesabı Sil'),
+          findsOneWidget,
+        );
 
-    testWidgets('Arama kutusuna metin yazıldığında kullanıcı listesi filtrelenmelidir', (tester) async {
-      final mockUsers = [
-        {"id": "USR-1", "name": "Ahmet Yılmaz", "emailAddress": "ahmet@mail.com"},
-        {"id": "USR-2", "name": "Zeynep Demir", "emailAddress": "zeynep@mail.com"}
-      ];
+        // Ekranda 1 tane "Silinemez" yazısı olmalı (O da Sistem Yöneticisi için)
+        expect(find.text('Silinemez'), findsOneWidget);
 
-      when(mockDio.get(any, options: anyNamed('options')))
-          .thenAnswer((_) async => _createMockResponse(mockUsers, 200));
+        // Ayrıca kilit ikonunun da ekranda olduğunu doğrulayalım
+        expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      },
+    );
 
-      await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Arama kutusuna metin yazıldığında kullanıcı listesi filtrelenmelidir',
+      (tester) async {
+        final mockUsers = [
+          {
+            "id": "USR-1",
+            "name": "Ahmet Yılmaz",
+            "emailAddress": "ahmet@mail.com",
+          },
+          {
+            "id": "USR-2",
+            "name": "Zeynep Demir",
+            "emailAddress": "zeynep@mail.com",
+          },
+        ];
 
-      await tester.enterText(find.byType(TextField), 'Zeynep');
-      await tester.pumpAndSettle(); 
+        when(
+          mockDio.get(any, options: anyNamed('options')),
+        ).thenAnswer((_) async => _createMockResponse(mockUsers, 200));
 
-      expect(find.text('Zeynep Demir'), findsOneWidget);
-      expect(find.text('Ahmet Yılmaz'), findsNothing);
-    });
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pumpAndSettle();
 
-    testWidgets('Hesabı Sil butonuna tıklandığında onay dialogu açılmalı ve silme işlemi yapılmalıdır', (tester) async {
-      final mockUsers = [
-        {"id": "USR-999", "name": "Silinecek Kullanıcı", "emailAddress": "sil@mail.com", "isAdmin": false}
-      ];
+        await tester.enterText(find.byType(TextField), 'Zeynep');
+        await tester.pumpAndSettle();
 
-      when(mockDio.get(any, options: anyNamed('options')))
-          .thenAnswer((_) async => _createMockResponse(mockUsers, 200));
-      
-      when(mockDio.delete(any, options: anyNamed('options')))
-          .thenAnswer((_) async => _createMockResponse({}, 200));
+        expect(find.text('Zeynep Demir'), findsOneWidget);
+        expect(find.text('Ahmet Yılmaz'), findsNothing);
+      },
+    );
 
-      await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Hesabı Sil butonuna tıklandığında onay dialogu açılmalı ve silme işlemi yapılmalıdır',
+      (tester) async {
+        final mockUsers = [
+          {
+            "id": "USR-999",
+            "name": "Silinecek Kullanıcı",
+            "emailAddress": "sil@mail.com",
+            "isAdmin": false,
+          },
+        ];
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Hesabı Sil'));
-      await tester.pumpAndSettle();
+        when(
+          mockDio.get(any, options: anyNamed('options')),
+        ).thenAnswer((_) async => _createMockResponse(mockUsers, 200));
 
-      expect(find.text('Kullanıcıyı Sil'), findsOneWidget);
+        when(
+          mockDio.delete(any, options: anyNamed('options')),
+        ).thenAnswer((_) async => _createMockResponse({}, 200));
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Kalıcı Olarak Sil'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pumpAndSettle();
 
-      verify(mockDio.delete(any, options: anyNamed('options'))).called(1);
-      
-      expect(find.text('Kullanıcı hesabı sistemden başarıyla silindi.'), findsOneWidget);
-    });
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Hesabı Sil'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Kullanıcıyı Sil'), findsOneWidget);
+
+        await tester.tap(
+          find.widgetWithText(ElevatedButton, 'Kalıcı Olarak Sil'),
+        );
+        await tester.pumpAndSettle();
+
+        verify(mockDio.delete(any, options: anyNamed('options'))).called(1);
+
+        expect(
+          find.text('Kullanıcı hesabı sistemden başarıyla silindi.'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

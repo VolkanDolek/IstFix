@@ -142,3 +142,30 @@ def test_login_lockout_mechanism():
     res_5th = client.post("/api/auth/login", data={"username": "bruteforce@istfix.com", "password": "YanlisSifre!"})
     assert res_5th.status_code == 403
     assert "kilitlenmiştir" in res_5th.json()["detail"].lower() or "kilitlendi" in res_5th.json()["detail"].lower()
+
+# GÜNCELLEME: SİLİNMİŞ (SOFT DELETE) KULLANICI GİRİŞ KONTROLÜ
+def test_login_inactive_user_forbidden():
+    """
+    Kullanıcı 'Soft Delete' ile silindiyse (isActive=False), şifreyi doğru bilse bile 
+    sisteme giriş yapamayacağını doğrular.
+    """
+    client.post(
+        "/api/auth/register",
+        json={"name": "Silinmiş Adam", "emailAddress": "silinmis@istfix.com", "password": "DogruSifre123!", "kvkkAccepted": True}
+    )
+    
+    # Arka planda hesabı pasife alıyoruz (Adminin sildiğini simüle ediyoruz)
+    db = TestingSessionLocal()
+    user = db.query(Citizen).filter(Citizen.emailAddress == "silinmis@istfix.com").first()
+    user.isActive = False
+    db.commit()
+    db.close()
+
+    # Şifre doğru girilse bile 403 dönmeli
+    response = client.post(
+        "/api/auth/login",
+        data={"username": "silinmis@istfix.com", "password": "DogruSifre123!"}
+    )
+    
+    assert response.status_code == 403
+    assert "silinmiş veya kullanıma kapatılmıştır" in response.json()["detail"]

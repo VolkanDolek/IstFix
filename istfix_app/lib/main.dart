@@ -6,6 +6,13 @@ import 'package:istfix_app/features/admin/admin_main_tab_view.dart';
 import 'package:istfix_app/features/main/connectivity_wrapper.dart';
 import 'package:istfix_app/services/auth_service.dart';
 
+// =========================================================================
+// GÜNCELLEME: GLOBAL NAVIGATOR ANAHTARI
+// Bu anahtar sayesinde uygulamanın UI ağacında (context) olmasak bile
+// auth_service.dart içindeki Dio Interceptor'dan yönlendirme yapabiliriz.
+// =========================================================================
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 /// Uygulamanın başlangıç noktası (Entry Point).
 ///
 /// Asenkron operasyonlar (kimlik doğrulama, yerel depolama okuma vb.)
@@ -47,6 +54,9 @@ class IstFixApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // GÜNCELLEME: Tanımladığımız anahtarı Material App'e bağlıyoruz
+      navigatorKey: navigatorKey,
+
       title: 'IstFix',
       debugShowCheckedModeBanner: false,
 
@@ -69,6 +79,13 @@ class IstFixApp extends StatelessWidget {
       builder: (context, child) {
         return ConnectivityWrapper(child: child!);
       },
+
+      // =========================================================================
+      // GÜNCELLEME: ROTALAR (ROUTES)
+      // Dio Interceptor 403 hatası aldığında pushNamedAndRemoveUntil('/login')
+      // yapabilsin diye bu rotayı öğretiyoruz.
+      // =========================================================================
+      routes: {'/login': (context) => const WelcomeView()},
 
       // --- ROL TABANLI YÖNLENDİRME (RBAC ROUTING) ---
       // Kullanıcının oturum ve yetki durumuna göre başlangıç ekranını dinamik olarak belirler:
