@@ -75,6 +75,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
   /// Ml model tarafından belirlenen kategori ismine göre uygun UI rengini döndürür.
   Color _getCategoryColor(String category) {
     final cat = category.toLowerCase();
+    if (cat.contains('tespit')) return AppColors.sorunTespitEdilemedi;
     if (cat.contains('yol')) return AppColors.yol;
     if (cat.contains('aydınlatma') || cat.contains('aydinlatma'))
       return AppColors.aydinlatma;
