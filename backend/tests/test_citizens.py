@@ -72,7 +72,8 @@ def setup_database():
         emailAddress="vatandas@istfix.com", 
         passwordHash=get_password_hash("eski_sifre123"), # Test 3 için özel şifre 
         kvkkAccepted=True,
-        isAdmin=False
+        isAdmin=False,
+        isActive=True # GÜNCELLEME: Soft Delete eklentisi
     )
     db.add(test_user)
     
@@ -82,9 +83,23 @@ def setup_database():
         emailAddress="admin@istfix.com", 
         passwordHash=get_password_hash("admin_sifre123"), 
         kvkkAccepted=True,
-        isAdmin=True
+        isAdmin=True,
+        isActive=True # GÜNCELLEME: Soft Delete eklentisi
     )
     db.add(test_admin)
+    
+    # GÜNCELLEME: Listeleme filtresini test etmek için silinmiş bir kullanıcı ekliyoruz
+    deleted_user = Citizen(
+        id=uuid.uuid4(),
+        name="Silinmiş Hayalet", 
+        emailAddress="ghost@istfix.com", 
+        passwordHash="hash", 
+        kvkkAccepted=True,
+        isAdmin=False,
+        isActive=False # Soft Delete uygulanmış
+    )
+    db.add(deleted_user)
+    
     db.commit()
     db.close()
     
@@ -172,10 +187,12 @@ def test_get_all_citizens_by_admin():
     
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 2  # Biri Admin, Biri Vatandaş (Setup'tan gelenler)
-    assert data[0]["emailAddress"] == "vatandas@istfix.com"
+    # Veritabanında 3 kişi var (1'i silinmiş/isActive=False). O yüzden sadece 2 aktif hesap dönmeli.
+    assert len(data) == 2 
+    for u in data:
+        assert u["isActive"] is True
 
-# Test 5: Admin Vatandaş Hesabını Silme (Purge)
+# Test 5: Admin Vatandaş Hesabını Silme (Purge / Soft Delete)
 def test_delete_citizen_account_by_admin():
     db = TestingSessionLocal()
     user_to_delete = db.query(Citizen).filter(Citizen.emailAddress == "vatandas@istfix.com").first()
@@ -185,12 +202,14 @@ def test_delete_citizen_account_by_admin():
     response = client.delete(f"/api/citizens/{user_id}")
     
     assert response.status_code == 200
-    assert "kalıcı olarak kaldırıldı" in response.json()["message"]
+    # UX Deneyimi: Mesaj silindi olarak döner
+    assert "başarıyla silindi" in response.json()["message"]
 
-    # Kullanıcının gerçekten silindiğini doğrula
+    # Kullanıcının gerçekten (fiziksel) silinmediğini ama isActive bayrağının kapandığını doğrula
     db = TestingSessionLocal()
     check_user = db.query(Citizen).filter(Citizen.id == user_id).first()
-    assert check_user is None
+    assert check_user is not None
+    assert check_user.isActive is False
     db.close()
 
 # =====================================================================
@@ -219,4 +238,5 @@ def test_delete_admin_account_by_admin_forbidden():
     db = TestingSessionLocal()
     check_admin = db.query(Citizen).filter(Citizen.id == admin_id).first()
     assert check_admin is not None
+    assert check_admin.isActive is True
     db.close()

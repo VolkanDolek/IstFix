@@ -2,17 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API eklendi
 
 class MunicipalityManagementView extends StatefulWidget {
   // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir servisler eklendi.
   final Dio? dio;
   final FlutterSecureStorage? secureStorage;
 
-  const MunicipalityManagementView({
-    super.key,
-    this.dio,
-    this.secureStorage,
-  });
+  const MunicipalityManagementView({super.key, this.dio, this.secureStorage});
 
   @override
   State<MunicipalityManagementView> createState() =>
@@ -31,8 +28,8 @@ class _MunicipalityManagementViewState
   @override
   void initState() {
     super.initState();
-    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse orijinal paketleri kullan
-    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse merkezi ApiClient'ı kullan
+    _dio = widget.dio ?? ApiClient().dio; // Merkezi kalkan devreye alındı
     _storage = widget.secureStorage ?? const FlutterSecureStorage();
 
     _fetchMunicipalities();

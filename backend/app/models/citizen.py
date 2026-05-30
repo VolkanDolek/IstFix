@@ -32,5 +32,8 @@ class Citizen(Base):
     kvkkAccepted = Column(Boolean, default=False, nullable=False) 
     kvkkAcceptedAt = Column(DateTime, nullable=True) # Ne zaman onaylandığının damgası
 
+    # GÜNCELLEME: SOFT DELETE / LOGIN BLOKESİ İÇİN AKTİFLİK DURUMU
+    isActive = Column(Boolean, default=True) # Silinen kullanıcılar için False yapılır
+
     # Raporlarla olan ters bağlantı
     reports = relationship("Report", back_populates="citizen")

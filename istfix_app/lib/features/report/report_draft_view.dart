@@ -1,12 +1,12 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart'; // GÜNCELLEME: http yerine dio eklendi
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API kalkanı eklendi
 import 'package:istfix_app/features/report/report_result_view.dart';
 
 /// Kullanıcının çekmiş olduğu fotoğrafı, GPS verilerini ve ek açıklamalarını
@@ -14,14 +14,17 @@ import 'package:istfix_app/features/report/report_result_view.dart';
 class ReportDraftView extends StatefulWidget {
   final String imagePath; // Fotoğrafın dosya sistemi üzerindeki yolu
   final Position? position; // Fotoğraf çekildiği andaki GPS koordinatları
-  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir storage eklendi.
+
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir storage ve dio eklendi.
   final FlutterSecureStorage? secureStorage;
+  final Dio? dio;
 
   const ReportDraftView({
     super.key,
     required this.imagePath,
     required this.position,
     this.secureStorage,
+    this.dio,
   });
 
   @override
@@ -40,9 +43,17 @@ class _ReportDraftViewState extends State<ReportDraftView> {
   String _locationTitle = "Konum aranıyor...";
   String _municipality = "Bekleniyor...";
 
+  // GÜNCELLEME: Merkezi API istemcisi ve Storage
+  late final Dio _dio;
+  late final FlutterSecureStorage _secureStorage;
+
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse merkezi ApiClient'ı kullanıyoruz.
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _dio = widget.dio ?? ApiClient().dio; // Merkezi kalkan devreye alındı
+
     // Sayfa yüklenir yüklenmez koordinat verisini anlamlı bir adrese dönüştürür
     _getAddressFromLatLng();
   }
@@ -94,104 +105,91 @@ class _ReportDraftViewState extends State<ReportDraftView> {
     setState(() => _isSubmitting = true);
 
     try {
-      final uri = Uri.parse('http://10.0.2.2:8000/api/reports/upload');
-
-      // GÜNCELLEME: Dışarıdan mock storage verildiyse onu, verilmediyse orijinali kullan.
-      final storage = widget.secureStorage ?? const FlutterSecureStorage();
-      final token = await storage.read(key: 'access_token') ?? '';
-
+      final token = await _secureStorage.read(key: 'access_token') ?? '';
       debugPrint("Cihazdaki Token: $token");
 
-      var request = http.MultipartRequest('POST', uri);
-
-      request.headers.addAll({
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
+      // GÜNCELLEME: Dio FormData ile çok daha temiz yükleme
+      FormData formData = FormData.fromMap({
+        'latitude': widget.position?.latitude.toString() ?? "0.0",
+        'longitude': widget.position?.longitude.toString() ?? "0.0",
+        // Açıklama girilmişse ekle, boşsa gönderme
+        if (_descriptionController.text.trim().isNotEmpty)
+          'writtenDescription': _descriptionController.text.trim(),
+        'image': await MultipartFile.fromFile(widget.imagePath),
       });
 
-      request.fields['latitude'] =
-          widget.position?.latitude.toString() ?? "0.0";
-      request.fields['longitude'] =
-          widget.position?.longitude.toString() ?? "0.0";
-
-      if (_descriptionController.text.trim().isNotEmpty) {
-        request.fields['writtenDescription'] = _descriptionController.text
-            .trim();
-      }
-
-      var imageFile = await http.MultipartFile.fromPath(
-        'image',
-        widget.imagePath,
+      final response = await _dio.post(
+        '/reports/upload',
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ),
       );
-      request.files.add(imageFile);
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
 
       // --- 1. BAŞARILI GÖNDERİM SENARYOSU ---
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          // response.body'i JSON'a çeviriyoruz
-          final Map<String, dynamic> responseData = jsonDecode(response.body);
+        if (!mounted) return;
 
-          // Backend'den dönen categoryLabel ve processingStatus değerlerini alıyoruz
-          final String detectedCategory =
-              responseData['classification']?['categoryLabel'] ??
-              "Bilinmeyen Sorun";
-          final String processingStatus =
-              responseData['processingStatus'] ?? "";
+        final Map<String, dynamic> responseData = response.data;
 
-          // Eğer model sorun bulamadıysa veya mail atılmadıysa "Başarısız" ekranını göster
-          if (detectedCategory == "Sorun Tespit Edilemedi" ||
-              processingStatus == "EmailDispatchFailed" ||
-              processingStatus == "Rejected") {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ReportResultView(
-                  isSuccess: false,
-                  title: "Şikayet Gönderilmedi!",
-                  message:
-                      "Yapay zeka fotoğrafta herhangi bir altyapı sorunu tespit edemediği için belediyeye gereksiz bildirim yapılmamıştır.",
-                ),
-              ),
-            );
-          } else {
-            // AI gerçekten bir sorun bulduysa ve mail atıldıysa "Başarılı" ekranını göster
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ReportResultView(
-                  isSuccess: true,
-                  title: "Şikayetiniz gönderildi!",
-                  message:
-                      "Raporunuz sınıflandırıldı ve $_municipality'ne e-posta ile iletildi.",
-                  category: detectedCategory,
-                ),
-              ),
-            );
-          }
-        }
-      }
-      // --- 2. SUNUCU/ANALİZ HATASI SENARYOSU (500 vb.) ---
-      else {
-        if (mounted) {
+        // Backend'den dönen categoryLabel ve processingStatus değerlerini alıyoruz
+        final String detectedCategory =
+            responseData['classification']?['categoryLabel'] ??
+            "Bilinmeyen Sorun";
+        final String processingStatus = responseData['processingStatus'] ?? "";
+
+        // Eğer model sorun bulamadıysa veya mail atılmadıysa "Başarısız" ekranını göster
+        if (detectedCategory == "Sorun Tespit Edilemedi" ||
+            processingStatus == "EmailDispatchFailed" ||
+            processingStatus == "Rejected") {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => const ReportResultView(
                 isSuccess: false,
-                title: "Şikayetiniz gönderilemedi!",
+                title: "Şikayet Gönderilmedi!",
                 message:
-                    "Fotoğraf analiz edilirken sorun oluştu. Sorun kategorisi belirlenemedi.",
+                    "Yapay zeka fotoğrafta herhangi bir altyapı sorunu tespit edemediği için belediyeye gereksiz bildirim yapılmamıştır.",
+              ),
+            ),
+          );
+        } else {
+          // AI gerçekten bir sorun bulduysa ve mail atıldıysa "Başarılı" ekranını göster
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReportResultView(
+                isSuccess: true,
+                title: "Şikayetiniz gönderildi!",
+                message:
+                    "Raporunuz sınıflandırıldı ve $_municipality Belediyesi'ne e-posta ile iletildi.",
+                category: detectedCategory,
               ),
             ),
           );
         }
       }
-    }
-    // --- 3. AĞ (NETWORK) / BAĞLANTI HATASI SENARYOSU ---
-    catch (e) {
+    } on DioException catch (e) {
+      // --- 2. SUNUCU/ANALİZ HATASI SENARYOSU (500 vb.) ---
+      debugPrint("Sunucu Hatası: ${e.response?.statusCode} - ${e.message}");
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ReportResultView(
+              isSuccess: false,
+              title: "Şikayetiniz gönderilemedi!",
+              message:
+                  "Fotoğraf analiz edilirken sorun oluştu. Sorun kategorisi belirlenemedi.",
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // --- 3. AĞ (NETWORK) / BAĞLANTI HATASI SENARYOSU ---
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -371,7 +369,6 @@ class _ReportDraftViewState extends State<ReportDraftView> {
                 fontSize: 14,
               ),
               decoration: const InputDecoration(
-                // YENİ: Profesyonel ve genel hintText düzenlemesi
                 hintText: "Lütfen karşılaştığınız sorunu kısaca tarif edin...",
                 hintStyle: TextStyle(color: Color(0xFF8A9EBA)),
                 border: InputBorder.none,

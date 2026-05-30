@@ -212,21 +212,22 @@ def test_get_my_reports_isolation():
     """
     Bireysel veri gizliliği (Data Isolation) testi:
     Sıradan bir vatandaşın sadece kendi oluşturduğu raporları görebildiğini test eder.
+    (Aynı zamanda arşivlenmiş raporları GÖREMEDİĞİNİ de doğrular.)
     """
     db = TestingSessionLocal()
     user = db.query(Citizen).filter(Citizen.emailAddress == "vatandas@istfix.com").first()
     
-    # Arka planda veritabanına bu kullanıcıya ait bir rapor ekliyoruz.
-    # Not: Pydantic şemasında 'photoUrl' zorunlu olduğu için dummy_path.jpg veriyoruz.
-    rapor = Report(
-        CITIZENId=user.id, 
-        categoryLabel="Çöp", 
-        confidenceScore=0.9, 
-        latitude=40.99, # GÜNCELLEME: Şemaya uyum için gerçekçi İstanbul verisi
-        longitude=29.02, # GÜNCELLEME: Şemaya uyum için gerçekçi İstanbul verisi
-        photoUrl="dummy_path.jpg" 
+    # Arka planda veritabanına biri aktif, biri arşivli (Soft Delete) iki rapor ekliyoruz.
+    aktif_rapor = Report(
+        CITIZENId=user.id, categoryLabel="Çöp", confidenceScore=0.9, 
+        latitude=40.99, longitude=29.02, photoUrl="dummy.jpg", isArchived=False
     )
-    db.add(rapor)
+    arsivli_rapor = Report(
+        CITIZENId=user.id, categoryLabel="Su Borusu", confidenceScore=0.8, 
+        latitude=40.99, longitude=29.02, photoUrl="dummy2.jpg", isArchived=True
+    )
+    
+    db.add_all([aktif_rapor, arsivli_rapor])
     db.commit()
     db.close()
 
@@ -234,8 +235,8 @@ def test_get_my_reports_isolation():
     
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
     # Pydantic şemasındaki 'classification' objesinden doğruluğunu kontrol et
+    assert len(data) == 1 # Toplam 2 rapor var ama 1'i arşivli olduğu için gelmemeli
     assert data[0]["classification"]["categoryLabel"] == "Çöp"
 
 def test_admin_update_report_status():
@@ -284,7 +285,8 @@ def test_delete_report_by_admin():
         confidenceScore=0.85, 
         latitude=40.99, 
         longitude=29.02, 
-        photoUrl="dummy_path_to_delete.jpg"
+        photoUrl="dummy_path_to_delete.jpg",
+        isArchived=False
     )
     db.add(rapor)
     db.commit()
@@ -295,10 +297,12 @@ def test_delete_report_by_admin():
     response = client.delete(f"/api/reports/{rapor_id}")
     
     assert response.status_code == 200
-    assert "kalıcı olarak sistemden kaldırıldı" in response.json()["message"]
+    # GÜNCELLEME: Artık mesajda arşivlendiği yazmalı
+    assert "arşivlendi" in response.json()["message"]
 
-    # Raporun gerçekten silindiğini teyit et
+    # Raporun fiziksel olarak silinmediğini ama isArchived bayrağının True olduğunu teyit et
     db = TestingSessionLocal()
     deleted_report = db.query(Report).filter(Report.id == rapor_id).first()
-    assert deleted_report is None
+    assert deleted_report is not None
+    assert deleted_report.isArchived is True
     db.close()

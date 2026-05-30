@@ -70,6 +70,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  integration_test:
+    sdk: flutter
+
   # --- TEST VE MOCK PAKETLERİ ---
   mockito: ^5.4.4
   build_runner: ^2.4.8
@@ -96,6 +99,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/logos/
+    - assets/test_images/test_image.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

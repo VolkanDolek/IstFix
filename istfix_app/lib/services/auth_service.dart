@@ -1,20 +1,19 @@
+// lib/services/auth_service.dart
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:istfix_app/core/network/api_client.dart';
 
 /// Kimlik doğrulama işlemlerini (Giriş, Kayıt, Çıkış) yöneten servis sınıfı.
 class AuthService {
-  // Android emülatör üzerinden yerel makinedeki backend'e erişmek için 10.0.2.2 kullanılır.
-  // iOS Simulator için '127.0.0.1'
-  // Gerçek cihazla test için bilgisayarının yerel IP adresi
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: "http://10.0.2.2:8000/api",
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 3),
-    ),
-  );
+  // Bütün güvenlik kalkanları ApiClient içinde olduğu için sadece onu çağırıyoruz
+  // GÜNCELLEME: Sabit atamalar kaldırıldı, test için enjekte edilebilir yapıldı
+  final Dio _dio;
+  final FlutterSecureStorage _storage;
 
-  final _storage = const FlutterSecureStorage();
+  // GÜNCELLEME: Opsiyonel constructor kalkanı eklendi
+  AuthService({Dio? dio, FlutterSecureStorage? secureStorage})
+    : _dio = dio ?? ApiClient().dio,
+      _storage = secureStorage ?? const FlutterSecureStorage();
 
   /// Kullanıcı girişini doğrular ve oturum tercihlerini yönetir.
   /// [rememberMe] parametresi ile oturumun kalıcı olup olmayacağı belirlenir.

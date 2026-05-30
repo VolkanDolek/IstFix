@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API eklendi
 
 /// Sistem yöneticilerinin (Admin) kayıtlı tüm vatandaşları görüntülediği,
 /// arama yapabildiği ve gerektiğinde kullanıcı hesaplarını kalıcı olarak sildiği kontrol paneli.
@@ -34,10 +35,10 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   @override
   void initState() {
     super.initState();
-    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse orijinal paketleri kullan
-    _dio = widget.dio ?? Dio(BaseOptions(baseUrl: "http://10.0.2.2:8000/api"));
+    // GÜNCELLEME: Dışarıdan mock servis verilmişse onu, verilmemişse merkezi ApiClient'ı kullan
+    _dio = widget.dio ?? ApiClient().dio; // Merkezi kalkan devreye alındı
     _storage = widget.secureStorage ?? const FlutterSecureStorage();
-    
+
     _fetchUsers();
   }
 
@@ -124,10 +125,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text(
-              "Kalıcı Olarak Sil",
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text("Sil", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
