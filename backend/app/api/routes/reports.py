@@ -257,15 +257,18 @@ def get_reports(
     Admin ise: Veritabanındaki TÜM raporları görür.
     """
     
-    # --- YETKİ KONTROLÜ VE FİLTRELEME ---
+    # --- YETKİ KONTROLÜ VE FİLTRELEME (GÜNCELLEME: isArchived Kontrolü Eklendi) ---
     if current_user.isAdmin:
-        # Admin girişi tüm raporları çeker
-        print(f"DEBUG: Admin ({current_user.emailAddress}) tüm raporları çekiyor.")
-        reports = db.query(Report).order_by(Report.submissionTimestamp.desc()).all()
+        # Admin girişi arşivlenmemiş tüm raporları çeker
+        print(f"DEBUG: Admin ({current_user.emailAddress}) tüm aktif raporları çekiyor.")
+        reports = db.query(Report).filter(Report.isArchived == False).order_by(Report.submissionTimestamp.desc()).all()
     else:
-        # Normal kullanıcı sadece ona ait olanları çeker
-        print(f"DEBUG: Kullanıcı ({current_user.emailAddress}) kendi raporlarını çekiyor.")
-        reports = db.query(Report).filter(Report.CITIZENId == current_user.id).order_by(Report.submissionTimestamp.desc()).all()
+        # Normal kullanıcı sadece ona ait olan ve arşivlenmemiş olanları çeker
+        print(f"DEBUG: Kullanıcı ({current_user.emailAddress}) kendi aktif raporlarını çekiyor.")
+        reports = db.query(Report).filter(
+            Report.CITIZENId == current_user.id,
+            Report.isArchived == False # Kullanıcı silinen (arşivlenen) raporunu göremez
+        ).order_by(Report.submissionTimestamp.desc()).all()
     
     return reports
 
@@ -283,9 +286,9 @@ def get_report_detail(
     # Veritabanında raporu ID'ye göre ara
     report = db.query(Report).filter(Report.id == report_id).first()
     
-    # Rapor veritabanında yoksa 404 dön
-    if not report:
-        raise HTTPException(status_code=404, detail="Rapor bulunamadı.")
+    # Rapor veritabanında yoksa veya ARŞİVLENMİŞSE 404 dön (GÜNCELLEME)
+    if not report or report.isArchived:
+        raise HTTPException(status_code=404, detail="Rapor bulunamadı veya arşivlenmiş.")
         
     # Yetki kontrolü: Kullanıcı admin değilse ve rapor ona ait değilse erişimi engelle (403 Forbidden)
     if not current_user.isAdmin and report.CITIZENId != current_user.id:
@@ -307,10 +310,10 @@ def update_report_status(
     Sadece yetkili adminlerin rapor durumunu değiştirmesine izin verir.
     """
 
-    # a. Raporu bul ve güncelle
-    report = db.query(Report).filter(Report.id == report_id).first()
+    # a. Raporu bul ve güncelle (GÜNCELLEME: Arşivlenmişse dokunulamaz)
+    report = db.query(Report).filter(Report.id == report_id, Report.isArchived == False).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Rapor bulunamadı.")
+        raise HTTPException(status_code=404, detail="Rapor bulunamadı veya arşivlenmiş.")
 
     report.processingStatus = status_data.status
     
@@ -322,7 +325,7 @@ def update_report_status(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Güncelleme hatası: {str(e)}")
 
-# --- ADMİN ÖZEL - RAPOR SİLME (ADMIN REPORT PURGE) ---    
+# --- ADMİN ÖZEL - RAPOR SİLME (SOFT DELETE / ARCHIVE) ---    
 @router.delete("/{report_id}")
 def delete_report_by_admin(
     report_id: uuid.UUID,
@@ -330,24 +333,24 @@ def delete_report_by_admin(
     current_admin: Citizen = Depends(get_current_admin)
 ):
     """
-    Sistem yöneticisinin, belirtilen benzersiz kimliğe (ID) sahip herhangi bir raporu kalıcı olarak silmesini sağlar.
-    
-    Güvenlik Denetimi:
-    - Sadece 'get_current_admin' üzerinden doğrulanmış 'Admin' yetki sınıfındaki kullanıcılar sistemden rapor silebilir.
-    - Normal vatandaşların bu endpoint'e erişimi engellenmiştir.
+    Sistem yöneticisinin raporları "Soft Delete" (Mantıksal Silme) yöntemiyle arşivlemesini sağlar.
+    Veri fiziksel olarak yok edilmez, sadece sistemden gizlenir.
     """
     try:
         report_to_delete = db.query(Report).filter(Report.id == report_id).first()
         
-        if not report_to_delete:
+        # Eğer rapor yoksa veya zaten arşivlenmişse hata dön
+        if not report_to_delete or report_to_delete.isArchived:
             raise HTTPException(
                 status_code=404,
-                detail="Belirtilen kimliğe sahip rapor sistemde mevcut değil veya daha önce silinmiş."
+                detail="Belirtilen kimliğe sahip rapor sistemde mevcut değil veya zaten arşivlenmiş."
             )
         
-        db.delete(report_to_delete)
+        # GÜNCELLEME: Fiziksel silme (db.delete) yerine bayrağı True yapıyoruz
+        report_to_delete.isArchived = True
+        
         db.commit()
-        return {"message": f"{report_id} kimlikli rapor başarıyla kalıcı olarak sistemden kaldırıldı."}
+        return {"message": f"{report_id} kimlikli rapor başarıyla arşivlendi (Soft Delete)."}
         
     except HTTPException:
         # 404 hatasını ezmemek için direkt fırlatıyoruz
@@ -356,5 +359,5 @@ def delete_report_by_admin(
         db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"Rapor silme işlemi veritabanı senkronizasyon hatasından dolayı başarısız oldu: {str(e)}"
+            detail=f"Rapor arşivleme işlemi başarısız oldu: {str(e)}"
         )

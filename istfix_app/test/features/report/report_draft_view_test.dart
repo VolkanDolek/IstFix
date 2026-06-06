@@ -4,17 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart'; // GÜNCELLEME: http yerine dio eklendi
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:istfix_app/features/report/report_draft_view.dart';
 
-@GenerateNiceMocks([MockSpec<FlutterSecureStorage>()])
+// GÜNCELLEME: Test ortamında Dio'yu mocklayabilmek için ekleme yapıldı
+@GenerateNiceMocks([MockSpec<Dio>(), MockSpec<FlutterSecureStorage>()])
 import 'report_draft_view_test.mocks.dart';
 
 void main() {
+  // GÜNCELLEME: MockDio tanımı eklendi
+  late MockDio mockDio;
   late MockFlutterSecureStorage mockSecureStorage;
 
   setUp(() {
+    mockDio = MockDio();
     mockSecureStorage = MockFlutterSecureStorage();
     when(
       mockSecureStorage.read(key: anyNamed('key')),
@@ -42,6 +47,7 @@ void main() {
             'test_image.jpg', // Test dosya yolu (dosya sisteminde olmasına gerek yok, widget için yeterli)
         position: mockPosition,
         secureStorage: mockSecureStorage,
+        dio: mockDio, // GÜNCELLEME: Yenilenen sayfaya mockDio enjekte ediliyor
       ),
     );
   }

@@ -35,6 +35,9 @@ class Report(Base):
     submissionTimestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     processingStatus = Column(String(20), default="Pending") # Pending, InProgress, vb.
 
+    # GÜNCELLEME: SOFT DELETE BAYRAĞI
+    isArchived = Column(Boolean, default=False) # True olduğunda sistemden gizlenir
+    
     # --- AI Analiz Sonuçlarını Saklayacak Kolonlar ---
     categoryLabel = Column(String(100), nullable=True)
     confidenceScore = Column(Float, nullable=True)

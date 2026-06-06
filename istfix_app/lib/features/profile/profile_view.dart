@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart'; // GÜNCELLEME: http yerine dio eklendi
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API kalkanı eklendi
 import 'package:istfix_app/features/auth/login_view.dart';
 import 'package:istfix_app/services/auth_service.dart';
 import 'package:istfix_app/features/auth/kvkk_view.dart';
@@ -12,7 +12,17 @@ import 'package:istfix_app/features/profile/change_password_view.dart';
 /// Kullanıcı profil bilgilerinin görüntülendiği, oturum yönetiminin ve
 /// yasal metinlerin erişilebilir olduğu görünüm katmanı.
 class ProfileView extends StatefulWidget {
-  const ProfileView({super.key});
+  // GÜNCELLEME: Test ortamı için dışarıdan mocklanabilir parametreler eklendi
+  final Dio? dio;
+  final FlutterSecureStorage? secureStorage;
+  final AuthService? authService;
+
+  const ProfileView({
+    super.key,
+    this.dio,
+    this.secureStorage,
+    this.authService,
+  });
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
@@ -20,8 +30,12 @@ class ProfileView extends StatefulWidget {
 
 class _ProfileViewState extends State<ProfileView> {
   // Veri erişimi ve kimlik doğrulama servis bağımlılıkları
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  final AuthService _authService = AuthService();
+  // GÜNCELLEME: Sabit atamalar kaldırılıp late değişken yapıldı
+  late final FlutterSecureStorage _secureStorage;
+  late final AuthService _authService;
+
+  // GÜNCELLEME: Merkezi API İstemcisi
+  late final Dio _dio;
 
   // Profil verileri ve yüklenme durumu
   String _firstName = "...";
@@ -31,6 +45,11 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   void initState() {
     super.initState();
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal üretim nesnelerini bağlıyoruz
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _authService = widget.authService ?? AuthService();
+    _dio = widget.dio ?? ApiClient().dio;
+
     _fetchUserData();
   }
 
@@ -39,18 +58,16 @@ class _ProfileViewState extends State<ProfileView> {
   Future<void> _fetchUserData() async {
     try {
       final token = await _secureStorage.read(key: 'access_token');
-      final url = Uri.parse('http://10.0.2.2:8000/api/auth/me');
 
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+      // GÜNCELLEME: İstek merkezi kalkan üzerinden (Dio ile) atılıyor
+      final response = await _dio.get(
+        '/auth/me',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        // Dio JSON parse işlemini otomatik yapar, json.decode'a gerek kalmaz
+        final data = response.data;
         final fullName = data['name'] ?? "Kullanıcı";
 
         if (mounted) {

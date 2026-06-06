@@ -69,7 +69,8 @@ def setup_database():
         emailAddress="user@istfix.com", 
         passwordHash=get_password_hash("test1234"),
         kvkkAccepted=True,
-        isAdmin=False
+        isAdmin=False,
+        isActive=True # GÜNCELLEME
     )
     
     # 2. Yetkili Admin
@@ -79,7 +80,8 @@ def setup_database():
         emailAddress="admin@istfix.com", 
         passwordHash=get_password_hash("admin1234"),
         kvkkAccepted=True,
-        isAdmin=True
+        isAdmin=True,
+        isActive=True # GÜNCELLEME
     )
     
     db.add_all([normal_user, admin_user])
@@ -160,6 +162,26 @@ def test_get_current_user_not_found_in_db():
     
     assert response.status_code == 404
     assert "Kullanıcı bulunamadı" in response.json()["detail"]
+
+# GÜNCELLEME: SİLİNMİŞ (PASİFE ALINMIŞ) KULLANICI İÇİN TOKEN BLOKESİ TESTİ
+def test_get_current_user_inactive_account():
+    """Token doğru olsa bile hesabı Soft Delete ile kapatılmış kullanıcının erişemediğini test eder."""
+    db = TestingSessionLocal()
+    user = db.query(Citizen).filter(Citizen.emailAddress == "user@istfix.com").first()
+    valid_token = create_access_token(subject=str(user.id))
+    
+    # Admin tarafından hesabın silindiğini (pasife alındığını) simüle edelim
+    user.isActive = False
+    db.commit()
+    db.close()
+
+    response = client.get(
+        "/protected-user-route", 
+        headers={"Authorization": f"Bearer {valid_token}"}
+    )
+    
+    assert response.status_code == 403
+    assert "pasife alınmıştır" in response.json()["detail"]
 
 
 def test_get_current_admin_success():

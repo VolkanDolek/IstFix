@@ -50,6 +50,13 @@ def get_current_user(
     
     if user is None:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+    # GÜNCELLEME: SİLİNMİŞ (PASİFE ALINMIŞ) KULLANICI TOKEN İPTALİ (SOFT DELETE)
+    if not user.isActive:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hesabınız silinmiş veya pasife alınmıştır. Oturumunuz sonlandırıldı."
+        )
     
     return user
 

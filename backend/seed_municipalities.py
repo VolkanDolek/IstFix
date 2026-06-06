@@ -63,7 +63,7 @@ def seed_data():
         {"name": "Tuzla", "email": test_email},
         {"name": "Ümraniye", "email": test_email},
         {"name": "Üsküdar", "email": test_email},
-        {"name": "Zeytinburnubelde", "email": test_email}
+        {"name": "Zeytinburnu", "email": test_email}
     ]
 
     print(f"--- Belediye Verileri Ekleniyor  ---")

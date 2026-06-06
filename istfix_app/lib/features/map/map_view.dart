@@ -1,12 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart'; // GÜNCELLEME: http paketi yerine dio eklendi
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API kalkanı eklendi
 import 'package:istfix_app/features/report/report_list_view.dart';
 import 'package:istfix_app/features/report/report_detail_view.dart'; // Rapor detay sayfası entegrasyonu eklendi
 
@@ -23,12 +23,12 @@ class MyReport {
 /// Kullanıcının kendi konumunu ve gönderdiği ihbarları interaktif bir harita (OpenStreetMap)
 /// üzerinde görüntülemesini sağlayan ana görünüm sınıfı.
 class MapView extends StatefulWidget {
-  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage bağımlılıkları eklendi.
-  final http.Client? httpClient;
+  // GÜNCELLEME: Test edilebilirliği sağlamak için Dio ve FlutterSecureStorage bağımlılıkları eklendi.
+  final Dio? dio;
   final FlutterSecureStorage? secureStorage;
 
-  // GÜNCELLEME: Constructor'a httpClient ve secureStorage parametreleri eklendi.
-  const MapView({super.key, this.httpClient, this.secureStorage});
+  // GÜNCELLEME: Constructor'a dio ve secureStorage parametreleri eklendi.
+  const MapView({super.key, this.dio, this.secureStorage});
 
   @override
   State<MapView> createState() => _MapViewState();
@@ -42,8 +42,8 @@ class _MapViewState extends State<MapView> {
   // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
   late final FlutterSecureStorage _secureStorage;
 
-  // GÜNCELLEME: API istekleri için kullanılacak HTTP istemcisi eklendi.
-  late final http.Client _httpClient;
+  // GÜNCELLEME: API istekleri için kullanılacak merkezi HTTP istemcisi (Dio) eklendi.
+  late final Dio _dio;
 
   // Konum alınamadığı durumlarda kullanılacak varsayılan başlangıç noktası (İstanbul Merkezi)
   final LatLng _istanbulCenter = const LatLng(41.0082, 28.9784);
@@ -62,9 +62,9 @@ class _MapViewState extends State<MapView> {
   @override
   void initState() {
     super.initState();
-    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse merkezi ApiClient'ı kullanıyoruz.
     _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
-    _httpClient = widget.httpClient ?? http.Client();
+    _dio = widget.dio ?? ApiClient().dio; // Merkezi kalkan devreye alındı
 
     _checkLocationServices(); // Başlangıçta GPS yetkilerini kontrol et
     _fetchMyReportsFromBackend(); // Backend'den harita verilerini çek
@@ -81,7 +81,7 @@ class _MapViewState extends State<MapView> {
     }
   }
 
-  /// Kullanıcıya ait raporları API üzerinden asenkron olarak çeker ve harita
+  /// Kullanıcına ait raporları API üzerinden asenkron olarak çeker ve harita
   /// işaretleyicileri (marker) için 'MyReport' modeline dönüştürür.
   Future<void> _fetchMyReportsFromBackend() async {
     setState(() => _isLoadingReports = true);
@@ -89,24 +89,24 @@ class _MapViewState extends State<MapView> {
     try {
       final token = await _getToken();
 
-      // API uç noktası yapılandırması
-      final url = Uri.parse('http://10.0.2.2:8000/api/reports/me');
-
-      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
-      final response = await _httpClient
+      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen ve kalkanlı _dio kullanıldı.
+      final response = await _dio
           .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            '/reports/me',
+            options: Options(
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+            ),
           )
           .timeout(
             const Duration(seconds: 5),
           ); // Sunucu yanıt vermezse 5 saniye içinde zaman aşımına uğratır
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        // GÜNCELLEME: Dio JSON dönüşümünü otomatik yaptığı için doğrudan response.data'yı kullanıyoruz.
+        final List<dynamic> data = response.data is List ? response.data : [];
 
         final List<MyReport> fetchedReports = data.map((item) {
           String categoryName = "Diğer";
@@ -317,7 +317,7 @@ class _MapViewState extends State<MapView> {
                       height: 24,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.blueAccent,
+                          color: AppColors.halicAcigi, // Canlı mavi renk
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                           boxShadow: [

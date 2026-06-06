@@ -1,24 +1,23 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart';
 
 /// Kullanıcının daha önce gönderdiği bir raporun tüm ayrıntılarını (fotoğraf,
 /// AI sınıflandırması, belediye bilgisi ve güncel işlem durumu) gösteren detay ekranı.
 class ReportDetailView extends StatefulWidget {
   final String reportId; // Detayları çekilecek raporun benzersiz kimliği
 
-  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage eklendi.
-  final http.Client? httpClient;
+  final Dio? dio;
   final FlutterSecureStorage? secureStorage;
 
   // GÜNCELLEME: Constructor güncellendi.
   const ReportDetailView({
     super.key,
     required this.reportId,
-    this.httpClient,
+    this.dio,
     this.secureStorage,
   });
 
@@ -30,8 +29,7 @@ class _ReportDetailViewState extends State<ReportDetailView> {
   // Kimlik doğrulama verileri ve durum yönetimi değişkenleri
   // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
   late final FlutterSecureStorage _secureStorage;
-  // GÜNCELLEME: API istekleri için HTTP istemcisi eklendi.
-  late final http.Client _httpClient;
+  late final Dio _dio;
 
   bool _isLoading = true;
   Map<String, dynamic>? _reportData;
@@ -39,49 +37,63 @@ class _ReportDetailViewState extends State<ReportDetailView> {
   @override
   void initState() {
     super.initState();
-    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
     _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
-    _httpClient = widget.httpClient ?? http.Client();
+    _dio = widget.dio ?? ApiClient().dio;
 
     _fetchReportDetails();
   }
 
-  /// Belirtilen rapor ID'sini kullanarak backend (FastAPI) üzerinden güncel verileri çeker.
-  /// JWT tabanlı yetkilendirme ve çeşitli HTTP hata kodlarını (404, 422 vb.) yönetir.
+  /// Belirtilen rapor ID'sini kullanarak backend üzerinden güncel verileri çeker.
   Future<void> _fetchReportDetails() async {
     try {
       final token = await _secureStorage.read(key: 'access_token');
-      final url = Uri.parse(
-        'http://10.0.2.2:8000/api/reports/${widget.reportId}',
-      );
 
-      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
-      final response = await _httpClient
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await _dio.get(
+        '/reports/${widget.reportId}',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
 
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
-            _reportData = json.decode(response.body);
+            _reportData = response.data;
             _isLoading = false;
           });
         }
-      } else if (response.statusCode == 404) {
-        throw Exception("Rapor veritabanında bulunamadı (404).");
-      } else if (response.statusCode == 422) {
-        throw Exception("Gönderilen ID formatı hatalı (422).");
-      } else {
-        throw Exception("Sunucu hatası: ${response.statusCode}");
+      }
+    } on DioException catch (e) {
+      // GÜNCELLEME: Hataları dışarı fırlatmak yerine doğrudan burada yönetiyoruz
+      String errorMessage = "Sunucu hatası oluştu.";
+      if (e.response?.statusCode == 404) {
+        errorMessage = "Rapor veritabanında bulunamadı (404).";
+      } else if (e.response?.statusCode == 422) {
+        errorMessage = "Gönderilen ID formatı hatalı (422).";
+      }
+
+      debugPrint("Dio detay çekme hatası: $errorMessage");
+      if (mounted) {
+        setState(() {
+          _isLoading =
+              false; // Yükleme animasyonunu durdur, hata ekranı çizilsin
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppColors.durumIletilemedi,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
-      debugPrint("Detay çekme hatası: $e");
+      debugPrint("Bilinmeyen detay çekme hatası: $e");
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -89,7 +101,7 @@ class _ReportDetailViewState extends State<ReportDetailView> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceAll("Exception: ", "")),
+            content: Text("Beklenmedik bir hata oluştu."),
             backgroundColor: AppColors.durumIletilemedi,
             duration: const Duration(seconds: 4),
           ),

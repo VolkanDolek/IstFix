@@ -1,5 +1,6 @@
 # backend/app/api/routes/citizens.py
 import random
+import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -158,14 +159,11 @@ def verify_reset_code(data: VerifyCodeRequest, db: Session = Depends(get_db)):
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_all_citizens(db: Session = Depends(get_db), current_admin: Citizen = Depends(get_current_admin)):
     """
-    Sistem veritabanında kayıtlı olan tüm vatandaşların (Citizens) detaylı listesini geriye döner.
-    
-    Güvenlik Denetimi:
-    - Bu endpoint korumalıdır. Sadece 'Admin' rol yetkisine sahip kullanıcılar erişebilir.
-    - Yetkisiz isteklerde 'get_current_admin' bağımlılığı otomatik olarak 403 Forbidden fırlatır.
+    Sistem veritabanında kayıtlı olan tüm AKTİF vatandaşların detaylı listesini geriye döner.
     """
     try:
-        citizens = db.query(Citizen).all()
+        # GÜNCELLEME: Sadece 'isActive == True' olanları listele (Silinenleri admin de lisede görmesin)
+        citizens = db.query(Citizen).filter(Citizen.isActive == True).all()
         return citizens
     except Exception as e:
         raise HTTPException(
@@ -173,22 +171,21 @@ def get_all_citizens(db: Session = Depends(get_db), current_admin: Citizen = Dep
             detail=f"Kullanıcı listesi veritabanından çekilirken sistemsel hata oluştu: {str(e)}"
         )
     
-# --- 5. AKIŞ: ADMİN ÖZEL - KULLANICI HESABI SİLME (ADMIN CITIZEN PURGE) ---
+# --- 5. AKIŞ: ADMİN ÖZEL - KULLANICI HESABI SİLME (SOFT DELETE) ---
 @router.delete("/{citizen_id}", status_code=status.HTTP_200_OK)
 def delete_citizen_account_by_admin(citizen_id: str, db: Session = Depends(get_db), current_admin: Citizen = Depends(get_current_admin)):
     """
-    Sistem yöneticisinin, belirtilen benzersiz kimliğe (ID) sahip herhangi bir vatandaşın hesabını kalıcı olarak silmesini sağlar.
-    
-    Güvenlik Denetimi:
-    - Vatandaşların kendi hesaplarını veya başkalarını silme yetkisi yoktur.
-    - Bu işlem kritik bir operasyon olduğu için sadece 'get_current_admin' bağımlılığı üzerinden doğrulanmış adminler tarafından tetiklenebilir.
+    Sistem yöneticisinin kullanıcı hesabını 'Soft Delete' mantığıyla pasife almasını (arşivlemesini) sağlar.
+    UX Gereği: Backend veriyi korur ama Frontend'e "Kullanıcı silindi" mesajı döner.
     """
     try:
         account_to_delete = db.query(Citizen).filter(Citizen.id == citizen_id).first()
-        if not account_to_delete:
+        
+        # GÜNCELLEME: Kullanıcı zaten pasifse (silinmişse) hata dön
+        if not account_to_delete or not account_to_delete.isActive:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Silinmek istenen kullanıcı hesabı sistemde bulunamadı."
+                detail="Silinmek istenen kullanıcı hesabı sistemde bulunamadı veya zaten silinmiş."
             )
         
         # GÜNCELLEME: HİYERARŞİK KORUMA VE ROL TABANLI SİLME KISITLAMASI KATMANI
@@ -200,9 +197,22 @@ def delete_citizen_account_by_admin(citizen_id: str, db: Session = Depends(get_d
                 detail="Yetki İhlali: Sistem yöneticisi (Admin) statüsündeki hesaplar mobil kontrol paneli üzerinden silinemez."
             )
         
-        db.delete(account_to_delete)
+        # GÜNCELLEME: SOFT DELETE + KVKK VERİ ANONİMLEŞTİRME (MASKING)
+        account_to_delete.isActive = False
+        
+        # E-postayı boşa çıkarıyoruz ki aynı maille tekrar kayıt olunabilsin
+        # Örnek sonuç: deleted_a1b2c3d4_ege@istfix.com
+        rastgele_kod = uuid.uuid4().hex[:8]
+        account_to_delete.emailAddress = f"deleted_{rastgele_kod}_{account_to_delete.emailAddress}"
+        
+        # KVKK gereği kişinin adını ve şifre hash'ini de anlamsız hale getiriyoruz
+        account_to_delete.name = "Silinmiş Kullanıcı"
+        account_to_delete.passwordHash = "deleted_account_no_password"
+        
         db.commit()
-        return {"message": f"{citizen_id} kimlikli kullanıcı hesabı sistemden kalıcı olarak kaldırıldı."}
+        
+        return {"message": "Kullanıcı hesabı sistemden başarıyla silindi."}
+        
     except HTTPException:
         raise
     except Exception as e:

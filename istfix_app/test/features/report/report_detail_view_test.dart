@@ -1,103 +1,116 @@
 // test/features/report/report_detail_view_test.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-// Projene ait importlar
 import 'package:istfix_app/features/report/report_detail_view.dart';
 
-// Mock dosyası için
-@GenerateMocks([http.Client, FlutterSecureStorage])
+@GenerateNiceMocks([MockSpec<Dio>(), MockSpec<FlutterSecureStorage>()])
 import 'report_detail_view_test.mocks.dart';
 
 void main() {
-  late MockClient mockHttpClient;
+  late MockDio mockDio;
   late MockFlutterSecureStorage mockSecureStorage;
   const String testReportId = "12345";
 
   setUp(() {
-    mockHttpClient = MockClient();
+    mockDio = MockDio();
     mockSecureStorage = MockFlutterSecureStorage();
 
     // Varsayılan olarak sahte bir token döndür
-    when(mockSecureStorage.read(key: anyNamed('key')))
-        .thenAnswer((_) async => 'sahte_jwt_token');
+    when(
+      mockSecureStorage.read(key: anyNamed('key')),
+    ).thenAnswer((_) async => 'sahte_jwt_token');
   });
 
-  // Test edilecek sayfayı sanal bir MaterialApp içine koyan yardımcı fonksiyon
+  // SnackBar'ın test ortamında güvenle çizilebilmesi için Scaffold eklendi
   Widget createWidgetUnderTest() {
     return MaterialApp(
-      home: ReportDetailView(
-        reportId: testReportId,
-        httpClient: mockHttpClient,
-        secureStorage: mockSecureStorage,
+      home: Scaffold(
+        body: ReportDetailView(
+          reportId: testReportId,
+          dio: mockDio,
+          secureStorage: mockSecureStorage,
+        ),
       ),
     );
   }
 
-  // Yardımcı Fonksiyon: UTF-8 destekli sahte HTTP Response oluşturur
-  http.Response _createMockResponse(Object data, int statusCode) {
-    final jsonString = jsonEncode(data);
-    return http.Response.bytes(utf8.encode(jsonString), statusCode, headers: {
-      'content-type': 'application/json; charset=utf-8'
-    });
+  Response<dynamic> _createMockResponse(dynamic data, int statusCode) {
+    return Response<dynamic>(
+      requestOptions: RequestOptions(path: ''),
+      data: data,
+      statusCode: statusCode,
+    );
   }
 
   group('ReportDetailView Widget Testleri', () {
-    testWidgets('API 404 (Bulunamadı) hatası verince ekranda hata uyarı sayfası çıkmalıdır', (tester) async {
-      // 1. HAZIRLIK: API 404 dönüyor
-      when(mockHttpClient.get(any, headers: anyNamed('headers')))
-          .thenAnswer((_) async => _createMockResponse({"detail": "Not found"}, 404));
+    testWidgets(
+      'API 404 (Bulunamadı) hatası verince ekranda hata uyarı sayfası çıkmalıdır',
+      (tester) async {
+        // 1. HAZIRLIK: Sunucunun 404 vermesini simüle et
+        when(mockDio.get(any, options: anyNamed('options'))).thenThrow(
+          DioException(
+            requestOptions: RequestOptions(path: ''),
+            response: Response(
+              requestOptions: RequestOptions(path: ''),
+              statusCode: 404,
+            ),
+            type: DioExceptionType.badResponse,
+          ),
+        );
 
-      // 2. AKSİYON
-      await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pump(); // API isteğini bekle
+        // 2. AKSİYON: Widget'ı yükle
+        await tester.pumpWidget(createWidgetUnderTest());
 
-      // 3. DOĞRULAMA: Hata arayüzü ve SnackBar çıkmalı
-      expect(find.text('Rapor detayları yüklenemedi.'), findsOneWidget);
-      expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.text('Rapor veritabanında bulunamadı (404).'), findsOneWidget);
-    });
+        // Sayfanın yüklenmesini ve SnackBar/Hata sayfasının animasyonlarının tamamlanmasını bekle
+        await tester.pumpAndSettle();
 
-    testWidgets('Backendden gelen rapor detayı başarıyla parse edilip çizilmelidir', (tester) async {
-      // 1. HAZIRLIK: Başarılı bir rapor detay JSON'ı dönüyor
-      final mockJsonResponse = {
-        "id": testReportId,
-        "classification": {
-          "categoryLabel": "Kaldırım Hasarı",
-          "confidenceScore": 0.92 // %92 olarak ekranda görünmeli
-        },
-        "municipality": {
-          "name": "Beşiktaş Belediyesi"
-        },
-        "writtenDescription": "Kaldırım tamamen çökmüş.",
-        "latitude": 41.0422,
-        "longitude": 29.0083,
-        "submissionTimestamp": "2026-05-19T10:30:00Z",
-        "processingStatus": "resolved" // Çözüldü olarak görünmeli
-      };
+        // 3. DOĞRULAMA: Sayfa yüklenemedi hatası ekrana geldi mi?
+        expect(find.text('Rapor detayları yüklenemedi.'), findsOneWidget);
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(
+          find.text('Rapor veritabanında bulunamadı (404).'),
+          findsOneWidget,
+        );
+      },
+    );
 
-      when(mockHttpClient.get(any, headers: anyNamed('headers')))
-          .thenAnswer((_) async => _createMockResponse(mockJsonResponse, 200));
+    testWidgets(
+      'Backendden gelen rapor detayı başarıyla parse edilip çizilmelidir',
+      (tester) async {
+        final mockJsonResponse = {
+          "id": testReportId,
+          "classification": {
+            "categoryLabel": "Kaldırım Hasarı",
+            "confidenceScore": 0.92,
+          },
+          "municipality": {"name": "Beşiktaş Belediyesi"},
+          "writtenDescription": "Kaldırım tamamen çökmüş.",
+          "latitude": 41.0422,
+          "longitude": 29.0083,
+          "submissionTimestamp": "2026-05-19T10:30:00Z",
+          "processingStatus": "resolved",
+        };
 
-      // 2. AKSİYON
-      await tester.pumpWidget(createWidgetUnderTest());
-      await tester.pump(); // Animasyonları atla
-      await tester.pump(const Duration(seconds: 1)); // SingleChildScrollView render olsun
+        when(
+          mockDio.get(any, options: anyNamed('options')),
+        ).thenAnswer((_) async => _createMockResponse(mockJsonResponse, 200));
 
-      // 3. DOĞRULAMA: Gelen veriler ekrana doğru yerleşmiş mi?
-      expect(find.text('Kaldırım Hasarı'), findsOneWidget);
-      expect(find.text('%92'), findsOneWidget);
-      expect(find.text('Beşiktaş Belediyesi'), findsOneWidget);
-      expect(find.text('Kaldırım tamamen çökmüş.'), findsOneWidget);
-      expect(find.text('41.0422° K, 29.0083° D'), findsOneWidget); // Konum formatlama kontrolü
-      
-      // Çözüldü durumu için gösterilen banner mesajını kontrol et
-      expect(find.text('Sorun başarıyla çözüldü.'), findsOneWidget);
-    });
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+
+        expect(find.text('Kaldırım Hasarı'), findsOneWidget);
+        expect(find.text('%92'), findsOneWidget);
+        expect(find.text('Beşiktaş Belediyesi'), findsOneWidget);
+        expect(find.text('Kaldırım tamamen çökmüş.'), findsOneWidget);
+        expect(find.text('41.0422° K, 29.0083° D'), findsOneWidget);
+        expect(find.text('Sorun başarıyla çözüldü.'), findsOneWidget);
+      },
+    );
   });
 }

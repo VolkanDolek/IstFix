@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart'; // GÜNCELLEME: http yerine dio eklendi
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:istfix_app/core/constants/color_constants.dart';
+import 'package:istfix_app/core/network/api_client.dart'; // GÜNCELLEME: Merkezi API kalkanı eklendi
 import 'package:istfix_app/features/report/report_detail_view.dart';
 
 /// Rapor listesinde görüntülenecek her bir öğenin veri modelini temsil eder.
@@ -34,12 +34,12 @@ class ReportListItem {
 
 /// Kullanıcının daha önce sisteme ilettiği ihbarları liste halinde sunan görünüm sınıfı.
 class ReportListView extends StatefulWidget {
-  // GÜNCELLEME: Test edilebilirliği sağlamak için http.Client ve FlutterSecureStorage bağımlılıkları eklendi.
-  final http.Client? httpClient;
+  // GÜNCELLEME: Test edilebilirliği sağlamak için Dio ve FlutterSecureStorage bağımlılıkları eklendi.
+  final Dio? dio;
   final FlutterSecureStorage? secureStorage;
 
-  // GÜNCELLEME: Constructor'a httpClient ve secureStorage parametreleri eklendi.
-  const ReportListView({super.key, this.httpClient, this.secureStorage});
+  // GÜNCELLEME: Constructor'a dio ve secureStorage parametreleri eklendi.
+  const ReportListView({super.key, this.dio, this.secureStorage});
 
   @override
   State<ReportListView> createState() => _ReportListViewState();
@@ -50,8 +50,8 @@ class _ReportListViewState extends State<ReportListView> {
   // GÜNCELLEME: Sabit atama kaldırılıp late değişken yapıldı.
   late final FlutterSecureStorage _secureStorage;
 
-  // GÜNCELLEME: API istekleri için kullanılacak HTTP istemcisi eklendi.
-  late final http.Client _httpClient;
+  // GÜNCELLEME: API istekleri için kullanılacak merkezi HTTP istemcisi (Dio) eklendi.
+  late final Dio _dio;
 
   // Arayüzde listelenecek raporların tutulduğu koleksiyon
   List<ReportListItem> _reports = [];
@@ -79,9 +79,9 @@ class _ReportListViewState extends State<ReportListView> {
   @override
   void initState() {
     super.initState();
-    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse orijinal paketleri kullanıyoruz.
+    // GÜNCELLEME: Dışarıdan mock verildiyse onu, verilmediyse merkezi ApiClient'ı kullanıyoruz.
     _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
-    _httpClient = widget.httpClient ?? http.Client();
+    _dio = widget.dio ?? ApiClient().dio; // Merkezi kalkan devreye alındı
 
     // Görünüm belleğe yüklendiğinde asenkron veri çekme işlemi başlatılır
     _fetchReports();
@@ -206,21 +206,23 @@ class _ReportListViewState extends State<ReportListView> {
 
     try {
       final token = await _getToken();
-      final url = Uri.parse('http://10.0.2.2:8000/api/reports/me');
 
-      // GÜNCELLEME: Sabit http paketi yerine enjekte edilen _httpClient kullanıldı.
-      final response = await _httpClient
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+      // GÜNCELLEME: Sabit http paketi yerine kalkanlı merkezi _dio kullanıldı.
+      final response = await _dio.get(
+        '/reports/me',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        // GÜNCELLEME: Dio JSON dönüşümünü otomatik yaptığı için doğrudan response.data'yı kullanıyoruz.
+        final List<dynamic> data = response.data is List ? response.data : [];
 
         // Gelen JSON verisi Map edilerek uygulama içi veri modeline dönüştürülür
         final List<ReportListItem> fetchedReports = data.map((item) {
