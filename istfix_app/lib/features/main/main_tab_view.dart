@@ -190,7 +190,7 @@ class _MainTabViewState extends State<MainTabView> with WidgetsBindingObserver {
         index: _page,
         children: [
           const MapView(),
-          CameraView(key: _cameraKey), // Kamera sekmesi
+          CameraView(key: _cameraKey, isActive: _page == 1), // Kamera sekmesi
           const ProfileView(),
         ],
       ),

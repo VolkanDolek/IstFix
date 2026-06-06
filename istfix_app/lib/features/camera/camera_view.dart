@@ -11,12 +11,14 @@ class CameraView extends StatefulWidget {
   final CameraController? mockCameraController;
   final Future<bool> Function()? mockCheckGps;
   final Future<Position?> Function()? mockGetCurrentPosition;
+  final bool isActive; // GÜNCELLEME: Aktif sekme takibi için eklenen bayrak
 
   const CameraView({
     super.key,
     this.mockCameraController,
     this.mockCheckGps,
     this.mockGetCurrentPosition,
+    this.isActive = true, // GÜNCELLEME: Varsayılan olarak true atandı
   });
 
   @override
@@ -39,7 +41,7 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // GÜNCELLEME: Eğer dışarıdan mock controller verildiyse onu kullan, yoksa gerçek donanımı başlat
     if (widget.mockCameraController != null) {
       _cameraController = widget.mockCameraController;
@@ -47,10 +49,39 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
       // Bu sayede mock kamera başlatılmamış (uninitialized) olarak verildiğinde uygulama çökmek yerine yükleme ekranında kalır.
       _isCameraInitialized = _cameraController!.value.isInitialized;
     } else {
-      _initCamera();
+      // Eğer ilk açılışta bu sekme aktifse kamerayı başlat
+      if (widget.isActive) {
+        _initCamera();
+      }
     }
-    
+
     _checkGpsStatus();
+  }
+
+  // GÜNCELLEME: Üst widget'tan (MainTabView) gelen isActive parametresi her değiştiğinde tetiklenir
+  @override
+  void didUpdateWidget(covariant CameraView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Kullanıcı başka sekmeye geçtiyse kamerayı kapat, donanımı ve emülatörü rahatlat!
+    if (!widget.isActive && oldWidget.isActive) {
+      debugPrint(
+        "Kamera sekmesinden çıkıldı, donanım kaynakları serbest bırakılıyor.",
+      );
+      _cameraController?.dispose();
+      setState(() {
+        _isCameraInitialized = false;
+      });
+    }
+    // Kullanıcı kamera sekmesine geri geldiyse kamerayı sıfırdan ayağa kaldır!
+    else if (widget.isActive && !oldWidget.isActive) {
+      debugPrint(
+        "Kamera sekmesine geri girildi, donanım yeniden başlatılıyor.",
+      );
+      if (widget.mockCameraController == null) {
+        _initCamera();
+      }
+    }
   }
 
   @override
@@ -76,7 +107,9 @@ class CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     if (state == AppLifecycleState.inactive) {
       _cameraController?.dispose();
     } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
+      if (widget.isActive) {
+        _initCamera();
+      }
     }
   }
 
